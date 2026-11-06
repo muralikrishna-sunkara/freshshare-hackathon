@@ -18,7 +18,7 @@ Guiding rule from the survey: **keep it simple**. One repo, one database, one `d
 | CI/CD | GitHub Actions: lint + test → build images → push to ECR → deploy to ECS | Terraform and workflows live in `infra/` (see `infra/README.md`). |
 | Hosting | AWS ECS behind an ALB; RDS PostgreSQL; S3 for photos; secrets in Secrets Manager | Infra is defined in Terraform on the AWS infra branch. |
 
-> **Do not overwrite the survey.** dev.freshshare.food is collecting responses. Deploy the app to a new subdomain such as `app.dev.freshshare.food` (one extra DNS A record), or behind `/app`, and keep the survey running.
+> **Do not overwrite the survey.** dev.freshshare.food is collecting responses. The app lives at **freshshare.de** (Route 53 → ALB); never point dev.freshshare.food at the ALB.
 
 ## Repository layout
 
@@ -37,7 +37,7 @@ freshshare-hackathon/
 │   ├── docker-compose.prod.yml
 │   └── Caddyfile
 ├── .github/workflows/ci-deploy.yml
-├── data/                     # seed + anonymised survey
+├── data/                     # seed.json, seed-photos/, anonymised survey
 ├── docs/                     # this kit
 └── scripts/
 ```
@@ -163,6 +163,11 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
+model Setting {
+  key   String @id      // e.g. "impactBaselinePortions" (seeded)
+  value String
+}
+
 model Report {
   id        String   @id @default(cuid())
   listingId String
@@ -243,7 +248,7 @@ The Terraform and GitHub Actions in `infra/` (see **`infra/README.md`**) expect 
 
 ## Ops (day-one minimum)
 
-- **Environments:** local (`docker compose up`) and AWS ECS at `app.dev.freshshare.food`.
+- **Environments:** local (`docker compose up`) and AWS ECS at `freshshare.de`.
 - **Health:** `/api/health` checks the DB; the deploy job curls it and fails the run if it is not 200.
 - **Logs:** `pino` JSON logs to stdout (CloudWatch on ECS, `docker compose logs -f api` locally).
 - **Backups:** RDS automated backups.
