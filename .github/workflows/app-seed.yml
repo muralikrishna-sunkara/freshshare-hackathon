@@ -1,0 +1,88 @@
+name: App database seed (manual)
+
+# Runs migrations and/or the Prisma seed against RDS as one-off ECS tasks,
+# using the api task definition currently deployed. Use it once after the
+# first real deploy, and again right before the pitch to reset demo data.
+#
+# Requires apps/api/package.json to define "prisma": { "seed": "..." }.
+
+on:
+  workflow_dispatch:
+    inputs:
+      migrate:
+        description: "Run prisma migrate deploy first"
+        type: boolean
+        default: true
+      seed:
+        description: "Run prisma db seed (resets demo data)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-deploy-dev   # never overlaps a deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+  CLUSTER: freshshare-dev
+
+jobs:
+  run:
+    name: Migrate / seed RDS
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check the api runs the real image
+        id: td
+        run: |
+          set -euo pipefail
+          arn=$(aws ecs describe-services --cluster "$CLUSTER" --services api \
+            --query 'services[0].taskDefinition' --output text)
+          image=$(aws ecs describe-task-definition --task-definition "$arn" \
+            --query 'taskDefinition.containerDefinitions[0].image' --output text)
+          echo "Task definition: $arn"
+          echo "Image: $image"
+          if [[ "$image" == *nginx* ]]; then
+            echo "::error::The api service still runs the hello-world image. Deploy the app first (App build and deploy)."
+            exit 1
+          fi
+          echo "arn=$arn" >> "$GITHUB_OUTPUT"
+
+      - name: Run one-off tasks
+        env:
+          TASK_DEF: ${{ steps.td.outputs.arn }}
+          DO_MIGRATE: ${{ inputs.migrate }}
+          DO_SEED: ${{ inputs.seed }}
+        run: |
+          set -euo pipefail
+          run_task() {
+            local label=$1; shift
+            local cmd; cmd=$(jq -cn --args '$ARGS.positional' "$@")
+            local overrides; overrides=$(jq -cn --argjson c "$cmd" '{containerOverrides:[{name:"api",command:$c}]}')
+            local task
+            task=$(aws ecs run-task --cluster "$CLUSTER" --task-definition "$TASK_DEF" \
+              --capacity-provider-strategy capacityProvider="${CLUSTER}-asg",weight=1 \
+              --overrides "$overrides" --started-by "gha-${GITHUB_RUN_ID}" \
+              --query 'tasks[0].taskArn' --output text)
+            echo "$label task: $task"
+            aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$task"
+            local code
+            code=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$task" \
+              --query 'tasks[0].containers[0].exitCode' --output text)
+            echo "$label exit code: $code"
+            [ "$code" = "0" ] || { echo "::error::$label failed. Logs: aws logs tail /ecs/${CLUSTER}/api --since 15m"; exit 1; }
+          }
+          [ "$DO_MIGRATE" = "true" ] && run_task "Migrate" npx prisma migrate deploy
+          [ "$DO_SEED" = "true" ] && run_task "Seed" npx prisma db seed
+          true

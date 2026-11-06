@@ -161,6 +161,14 @@ come from the task role automatically) under `listings/<id>.webp` and build
 public URLs as `${PUBLIC_IMAGE_BASE_URL}/listings/<id>.webp`. Keep the local
 `/uploads` volume as the `STORAGE_DRIVER=local` fallback for docker compose.
 
+**Seeding the database:** run **Actions → App build and deploy → Run
+workflow** with `seed` ticked (deploy + migrate + seed), or, without
+rebuilding, **Actions → App database seed (manual)**. It runs `npx prisma migrate deploy`
+and `npx prisma db seed` as one-off ECS tasks with the deployed api image, so
+`apps/api/package.json` needs a `"prisma": { "seed": "..." }` entry and the seed
+photos must be inside the api image (seed.ts uploads them via the storage
+module to S3). Run it again right before the pitch to reset the demo data.
+
 Rollback: re-run the workflow for an older commit, or
 `aws ecs update-service --cluster freshshare-dev --service api --task-definition freshshare-dev-api:<previous revision>`.
 

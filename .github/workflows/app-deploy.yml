@@ -20,6 +20,11 @@ on:
       - "package.json"
       - "package-lock.json"
   workflow_dispatch:
+    inputs:
+      seed:
+        description: "Also run prisma db seed after migrations (resets demo data)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -184,6 +189,23 @@ jobs:
             --query 'tasks[0].containers[0].exitCode' --output text)
           echo "Exit code: $code"
           [ "$code" = "0" ] || { echo "::error::Migrations failed (see /ecs/${CLUSTER}/api logs)"; exit 1; }
+
+      - name: Seed demo data
+        if: steps.taskdefs.outputs.api != '' && inputs.seed
+        run: |
+          set -euo pipefail
+          overrides='{"containerOverrides":[{"name":"api","command":["npx","prisma","db","seed"]}]}'
+          task=$(aws ecs run-task --cluster "$CLUSTER" \
+            --task-definition "${{ steps.taskdefs.outputs.api }}" \
+            --capacity-provider-strategy capacityProvider="${CLUSTER}-asg",weight=1 \
+            --overrides "$overrides" --started-by "gha-${GITHUB_RUN_ID}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "Seed task: $task"
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$task"
+          code=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$task" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "Exit code: $code"
+          [ "$code" = "0" ] || { echo "::error::Seed failed (see /ecs/${CLUSTER}/api logs)"; exit 1; }
 
       - name: Roll services
         run: |
