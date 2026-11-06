@@ -13,3 +13,6 @@ backend.hcl
 # Node (app comes tomorrow)
 node_modules/
 .env
+
+# Lock files: generate with full platform hashes (see infra/README.md), then remove this line
+.terraform.lock.hcl
