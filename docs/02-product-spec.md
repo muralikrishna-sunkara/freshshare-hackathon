@@ -8,6 +8,8 @@
 
 ## Scope
 
+P0/P1/P2 describe product priority. The build plan groups the work into **Tier 1 / 2 / 3** by time: Tier 1 is P0 minus chat, Tier 2 adds chat, fridges, impact and polish, Tier 3 is the rest of P1 plus P2.
+
 ### P0: must ship (the demo breaks without these)
 
 | # | Feature | Why (survey) | Acceptance criteria |
@@ -69,4 +71,4 @@ Payments, delivery, native mobile apps (build a responsive PWA instead), moderat
 
 ## Demo data
 
-Seed with realistic but fictional people and listings around Erlangen (see [`data/seed.json`](../data/seed.json)). Fridges in the seed file are placeholders with made-up names; replace them with real Fairteiler locations only after checking a current source.
+Seed with realistic but fictional people and listings around Erlangen (see [`data/seed.json`](../data/seed.json) and the images in [`data/seed-photos/`](../data/seed-photos)). The seed includes test cases: an unverified giver, an expired listing, a reserved listing, a listing 5 km away and a collected, rated pickup. Its `expectedResults` block lists what the API should return. Fridges in the seed file are placeholders with made-up names; replace them with real Fairteiler locations only after checking a current source.

@@ -23,7 +23,7 @@ Demo (see the click path below): map → lasagne card with photo, date, homemade
 > "Photo and date are required. The exact address only appears once the giver confirms. You can meet at a community fridge instead of a front door. Posting takes under 30 seconds, because the one comment we got most clearly was: **keep it simple.**"
 
 ### 5. Why now, why us (2:10 to 2:35)
-> "Too Good To Go proved people will pick up surplus food, but it's for shops. Household sharing is still WhatsApp groups and guesswork. We built this today with Claude, from survey to deployed app at app.dev.freshshare.food, on a stack we can run for a few euros a month."
+> "Too Good To Go proved people will pick up surplus food, but it's for shops. Household sharing is still WhatsApp groups and guesswork. We built this today with Claude, from survey to deployed app at freshshare.de, on a stack we can run for a few euros a month."
 
 ### 6. Traction and next steps (2:35 to 2:50)
 > "Day one: 17 responses, 9 'maybe I'd pick up food' and 3 people asking for early access. Our metric is simple: **turn the maybes into yeses.** Next: pilot in one Erlangen neighbourhood with two community fridges, then bakeries and food banks."
@@ -35,7 +35,7 @@ Demo (see the click path below): map → lasagne card with photo, date, homemade
 
 | # | Title | On screen |
 |---|---|---|
-| 1 | **FreshShare** | Logo, tagline "Free food from your neighbours. Food you can trust.", app.dev.freshshare.food |
+| 1 | **FreshShare** | Logo, tagline "Free food from your neighbours. Food you can trust.", freshshare.de |
 | 2 | **15 of 17 bin their surplus** | One big number. Sub-line: leftovers 13, fruit and veg 11, bread 7. Cause: forgot (12), expired (8). |
 | 3 | **Two things stop them sharing** | Left: "Is it safe?" 16 of 17 worry. Right: "Where?" 0 of 17 know a community fridge nearby, 12 use no app. |
 | 4 | **Trust is the product** | Bar chart of trust builders: photos+dates 10, verified 8, ratings 8, homemade label 8. Quote: "Trust in the food shared and knowing that we are helping to save food." |
@@ -45,14 +45,14 @@ Demo (see the click path below): map → lasagne card with photo, date, homemade
 
 ## Demo click path (60 seconds)
 
-Log in beforehand as **Sara** (demo receiver) on your phone, and as **Anna** on the laptop.
+Reseed first (deploy workflow with `seed=true`). Log in beforehand as **Sara** (`sara@demo.freshshare.de`) on your phone and **Anna** (`anna@demo.freshshare.de`) on the laptop; password `freshshare-demo`.
 
-1. Phone: map opens on Erlangen, 2 km circle, 7 pins and 2 fridges. *"Here's what's free near me right now."*
+1. Phone: map opens on Erlangen, 2 km circle, 8 pins and 2 fridges. *"Here's what's free near me right now."*
 2. Tap **Vegetable lasagne**: point at photo, "Best before tomorrow", **Homemade**, Anna, **Verified**, 4.9 stars, 450 m.
 3. **Reserve.** Read the line: "You'll get the exact address once Anna confirms."
-4. Laptop (Anna): confirm. Phone: address appears. Tap quick reply **"On my way"**.
+4. Laptop (Anna): confirm. Phone: address appears. Tap quick reply **"On my way"** (Tier 2; skip if chat isn't built).
 5. Phone: **Mark collected** → 5 stars. Banner: "This week your neighbourhood saved 24 portions".
-6. Toggle the fridge layer: "Demo Fridge: Parish Hall, checked 25 min ago: stocked."
+6. Toggle the fridge layer (Tier 2): "Demo Fridge: Parish Hall, checked 25 min ago: stocked."
 7. Optional if time: tap **+ Share food** and show the 30-second form with the safety checklist.
 
 **Backup:** a 60-second screen recording of exactly this path, on your laptop desktop.

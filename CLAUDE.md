@@ -5,7 +5,7 @@ FreshShare is a neighbourhood food-sharing web app: a map of free food from neig
 ## Read these first
 - `docs/02-product-spec.md`: scope (P0 / P1 / P2), acceptance criteria, product rules, copy.
 - `docs/03-architecture.md`: stack, repo layout, Prisma schema, API, compose files.
-- `docs/04-build-plan.md`: the block we are on.
+- `docs/04-build-plan.md`: the block we are on (Tier 1 = must ship, Tier 2 = should, Tier 3 = stretch).
 - `docs/01-survey-insights.md`: why each feature exists (17 survey responses from dev.freshshare.food).
 
 ## What the users told us (keep this in mind for every screen)
@@ -16,7 +16,7 @@ FreshShare is a neighbourhood food-sharing web app: a map of free food from neig
 - "Keep it simple." Posting a listing should take under 30 seconds.
 
 ## Stack
-React 18 + Vite + TypeScript + Tailwind + react-leaflet (OSM tiles) · Node 20 + Express + TypeScript + zod + Prisma + PostgreSQL 16 · JWT httpOnly cookie auth · multer + sharp for photos · Docker Compose + Caddy locally · AWS ECS (ALB, RDS, S3, Secrets Manager) via Terraform + GitHub Actions in `infra/` to `app.dev.freshshare.food`.
+React 18 + Vite + TypeScript + Tailwind + react-leaflet (OSM tiles) · Node 20 + Express + TypeScript + zod + Prisma + PostgreSQL 16 · JWT httpOnly cookie auth · multer + sharp for photos · Docker Compose + Caddy locally · AWS ECS (ALB, RDS, S3, Secrets Manager) via Terraform + GitHub Actions in `infra/` to **freshshare.de**.
 
 ## Deployment contract (see `infra/README.md`)
 api on port 4000 with `GET /api/health` · web Caddy on 80 with `APP_DOMAIN=:80` · Dockerfiles `apps/api/Dockerfile` and `apps/web/Dockerfile` built from the repo root · `STORAGE_DRIVER=s3` + `S3_BUCKET` + `PUBLIC_IMAGE_BASE_URL` (`local` for compose) · `DATABASE_URL`, `JWT_SECRET` from Secrets Manager · migrations `npx prisma migrate deploy`.
@@ -35,9 +35,10 @@ api on port 4000 with `GET /api/health` · web Caddy on 80 with `APP_DOMAIN=:80`
 - `docker compose -f infra/docker-compose.yml up --build`: full stack locally
 - `npm run dev`: api + web in watch mode (needs the db container)
 - `npm test`, `npm run lint`
-- `npm run db:migrate`, `npm run db:seed` (seed reads `data/seed.json`, dates relative to now)
+- `npm run db:migrate`, `npm run db:seed` (`npx prisma db seed`: full reset, loads `data/seed.json` + `data/seed-photos/` through the storage module; on AWS run the deploy workflow with `seed=true`)
+- `python3 scripts/check_seed.py`: validate seed data and its expected results
 
 ## Hard rules
-- Do not deploy over the survey site on `dev.freshshare.food`; the app goes to `app.dev.freshshare.food`.
+- Do not deploy over the survey site on `dev.freshshare.food`; the app goes to `freshshare.de`.
 - Never put survey respondent emails or other personal data in the repo, seed data, logs or the pitch.
 - No raw meat or fish listings in the MVP.
