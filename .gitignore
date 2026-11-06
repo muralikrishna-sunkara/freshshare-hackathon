@@ -1,0 +1,15 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+*.tfvars
+!*.tfvars.example
+backend.hcl
+.terraform.tfstate.lock.info
+
+# Node (app comes tomorrow)
+node_modules/
+.env

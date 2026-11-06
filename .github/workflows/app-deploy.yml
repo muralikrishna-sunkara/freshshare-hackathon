@@ -1,0 +1,219 @@
+name: App build and deploy
+
+# Dormant until the app exists: it only runs on changes under apps/ (or by
+# hand), and each image is skipped while its Dockerfile is missing.
+#
+# Flow: test -> build api/web images -> push to ECR (tag = git SHA) ->
+# run DB migrations as a one-off ECS task -> roll ECS services -> smoke test.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/app-deploy.yml"
+  pull_request:
+    paths:
+      - "apps/**"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-deploy-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+  NAME_PREFIX: freshshare-dev   # matches "${project}-${environment}" in Terraform
+  CLUSTER: freshshare-dev
+
+jobs:
+  detect:
+    name: Detect app
+    runs-on: ubuntu-latest
+    outputs:
+      has_node: ${{ steps.d.outputs.has_node }}
+      api: ${{ steps.d.outputs.api }}
+      web: ${{ steps.d.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: d
+        run: |
+          echo "has_node=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "api=$([ -f apps/api/Dockerfile ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "web=$([ -f apps/web/Dockerfile ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Lint and test
+    needs: detect
+    if: needs.detect.outputs.has_node == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: freshshare
+          POSTGRES_PASSWORD: freshshare
+          POSTGRES_DB: freshshare_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U freshshare"
+          --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://freshshare:freshshare@localhost:5432/freshshare_test
+      JWT_SECRET: ci-only-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint --if-present
+      - run: npm test --if-present
+
+  build:
+    name: Build and push ${{ matrix.service }}
+    needs: [detect, test]
+    if: >-
+      always() && !failure() && !cancelled() &&
+      github.event_name != 'pull_request' &&
+      (needs.detect.outputs.api == 'true' || needs.detect.outputs.web == 'true')
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        service: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.detect.outputs[matrix.service] == 'true'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: needs.detect.outputs[matrix.service] == 'true'
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        if: needs.detect.outputs[matrix.service] == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+        if: needs.detect.outputs[matrix.service] == 'true'
+
+      - uses: docker/build-push-action@v6
+        if: needs.detect.outputs[matrix.service] == 'true'
+        with:
+          context: .
+          file: apps/${{ matrix.service }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.NAME_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Deploy to ECS
+    needs: [detect, build]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: ${{ steps.url.outputs.app_url }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Register new task definitions
+        id: taskdefs
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          SHA: ${{ github.sha }}
+          HAS_API: ${{ needs.detect.outputs.api }}
+          HAS_WEB: ${{ needs.detect.outputs.web }}
+        run: |
+          set -euo pipefail
+          register() {
+            local svc=$1 family="${CLUSTER}-$1"
+            aws ecs describe-task-definition --task-definition "$family" --query taskDefinition > current.json
+            # New image; drop the hello-world command so the image's CMD runs
+            jq --arg img "$REGISTRY/$NAME_PREFIX/$svc:$SHA" '
+              .containerDefinitions[0].image = $img
+              | del(.containerDefinitions[0].command)
+              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                    .compatibilities, .registeredAt, .registeredBy, .deregisteredAt)
+            ' current.json > new.json
+            aws ecs register-task-definition --cli-input-json file://new.json \
+              --query taskDefinition.taskDefinitionArn --output text
+          }
+          [ "$HAS_API" = true ] && echo "api=$(register api)" >> "$GITHUB_OUTPUT"
+          [ "$HAS_WEB" = true ] && echo "web=$(register web)" >> "$GITHUB_OUTPUT"
+          true
+
+      - name: Run database migrations
+        if: steps.taskdefs.outputs.api != ''
+        run: |
+          set -euo pipefail
+          overrides='{"containerOverrides":[{"name":"api","command":["npx","prisma","migrate","deploy"]}]}'
+          task=$(aws ecs run-task --cluster "$CLUSTER" \
+            --task-definition "${{ steps.taskdefs.outputs.api }}" \
+            --capacity-provider-strategy capacityProvider="${CLUSTER}-asg",weight=1 \
+            --overrides "$overrides" --started-by "gha-${GITHUB_RUN_ID}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "Migration task: $task"
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$task"
+          code=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$task" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "Exit code: $code"
+          [ "$code" = "0" ] || { echo "::error::Migrations failed (see /ecs/${CLUSTER}/api logs)"; exit 1; }
+
+      - name: Roll services
+        run: |
+          set -euo pipefail
+          for svc in api web; do
+            arn=$(jq -r --arg s "$svc" '.[$s] // empty' <<< '${{ toJSON(steps.taskdefs.outputs) }}')
+            [ -z "$arn" ] && continue
+            echo "Deploying $svc -> $arn"
+            aws ecs update-service --cluster "$CLUSTER" --service "$svc" --task-definition "$arn" >/dev/null
+          done
+          for svc in api web; do
+            jq -e --arg s "$svc" 'has($s)' <<< '${{ toJSON(steps.taskdefs.outputs) }}' >/dev/null || continue
+            echo "Waiting for $svc to stabilise (circuit breaker rolls back on failure)..."
+            aws ecs wait services-stable --cluster "$CLUSTER" --services "$svc"
+          done
+
+      - name: App URL
+        id: url
+        run: |
+          url="${{ vars.APP_URL }}"
+          if [ -z "$url" ]; then
+            dns=$(aws elbv2 describe-load-balancers --names "$NAME_PREFIX" --query 'LoadBalancers[0].DNSName' --output text)
+            url="http://$dns"
+          fi
+          echo "app_url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 10); do
+            curl -fsS "${{ steps.url.outputs.app_url }}/api/health" && exit 0
+            sleep 10
+          done
+          echo "::error::health check failed"; exit 1
