@@ -3,6 +3,14 @@ data "aws_caller_identity" "current" {}
 locals {
   account_id = data.aws_caller_identity.current.account_id
   repo       = var.github_repository
+
+  # GitHub sends either the classic subject "repo:owner/name:..." or, when the
+  # repo uses immutable subjects, "repo:owner@<owner_id>/name@<repo_id>:...".
+  # Trust both so the roles work whichever the repo/org setting is.
+  sub_prefixes = compact([
+    "repo:${local.repo}",
+    var.github_owner_id != "" && var.github_repository_id != "" ? "repo:${split("/", local.repo)[0]}@${var.github_owner_id}/${split("/", local.repo)[1]}@${var.github_repository_id}" : "",
+  ])
 }
 
 # ---------- Terraform remote state ----------
@@ -107,10 +115,10 @@ data "aws_iam_policy_document" "plan_trust" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${local.repo}:pull_request",
-        "repo:${local.repo}:ref:refs/heads/*",
-      ]
+      values = flatten([for p in local.sub_prefixes : [
+        "${p}:pull_request",
+        "${p}:ref:refs/heads/*",
+      ]])
     }
   }
 }
@@ -158,7 +166,7 @@ data "aws_iam_policy_document" "apply_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [for e in var.github_environments : "repo:${local.repo}:environment:${e}"]
+      values   = flatten([for p in local.sub_prefixes : [for e in var.github_environments : "${p}:environment:${e}"]])
     }
   }
 }
