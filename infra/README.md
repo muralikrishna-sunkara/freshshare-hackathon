@@ -79,7 +79,13 @@ This creates the state bucket and three IAM roles that only
 | `freshshare-gha-deploy` | Jobs in the GitHub environment `dev` only | ECR push, ECS register/update/run-task, PassRole to `freshshare-*` |
 
 If your account already has the GitHub OIDC provider, use
-`terraform apply -var create_oidc_provider=false`. Keep the bootstrap's local
+`terraform apply -var create_oidc_provider=false`.
+
+The roles trust both GitHub OIDC subject formats: classic
+(`repo:owner/name:...`) and immutable (`repo:owner@<id>/name@<id>:...`, used
+when the repo or account has immutable subjects turned on). The numeric IDs
+are the `github_owner_id` / `github_repository_id` variables. Check yours with
+`gh api repos/<owner>/<repo>/actions/oidc/customization/sub`. Keep the bootstrap's local
 `terraform.tfstate` somewhere safe.
 
 ### 2. Configure GitHub
