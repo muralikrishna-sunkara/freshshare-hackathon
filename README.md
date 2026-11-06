@@ -21,7 +21,7 @@ Full analysis: [docs/01-survey-insights.md](docs/01-survey-insights.md).
 | [CLAUDE.md](CLAUDE.md) | Context Claude Code reads automatically in every session |
 | [docs/01-survey-insights.md](docs/01-survey-insights.md) | Survey findings and the build decisions they drive |
 | [docs/02-product-spec.md](docs/02-product-spec.md) | MVP scope (P0/P1/P2), acceptance criteria, screens, copy, product rules |
-| [docs/03-architecture.md](docs/03-architecture.md) | Stack, repo layout, Prisma schema, API, Docker/Caddy, CI/CD, security checklist |
+| [docs/03-architecture.md](docs/03-architecture.md) | Stack, repo layout, Prisma schema, API, AWS ECS deployment contract, security checklist |
 | [docs/04-build-plan.md](docs/04-build-plan.md) | Tomorrow's hour-by-hour plan with a copy-paste Claude prompt per block |
 | [pitch/PITCH.md](pitch/PITCH.md) | 3-minute script, slide outline, demo click path, Q&A prep, numbers cheat sheet |
 | [data/seed.json](data/seed.json) | Fictional demo users, listings and fridges around Erlangen |

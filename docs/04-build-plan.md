@@ -7,9 +7,8 @@ A 10-hour day, split into blocks that each end with something you can click. Eac
 - [ ] Node 20+, Docker Desktop (or Docker Engine), Git, and Claude Code installed. `claude --version` works.
 - [ ] Clone this repo and check out a working branch, e.g. `git checkout -b build/mvp`.
 - [ ] Read [`CLAUDE.md`](../CLAUDE.md), [`02-product-spec.md`](02-product-spec.md) and [`03-architecture.md`](03-architecture.md) once.
-- [ ] DNS: add an A record for `app.dev.freshshare.food` pointing at the VM (so TLS works when you deploy in the evening).
-- [ ] On the VM: Docker installed, a deploy user with your SSH key, ports 80/443 open.
-- [ ] GitHub repo secrets ready: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `JWT_SECRET`, `POSTGRES_PASSWORD`.
+- [ ] AWS: merge the infra branch and read `infra/README.md`. Run `terraform apply` tonight if you can (RDS and the ALB take a while), and check the GitHub Actions AWS credentials/role it asks for.
+- [ ] DNS: point `app.dev.freshshare.food` at the ALB (and have the ACM certificate validated) as `infra/README.md` describes.
 - [ ] Charge your phone: you will demo on it.
 
 ## How to work with Claude tomorrow
@@ -33,7 +32,7 @@ A 10-hour day, split into blocks that each end with something you can click. Eac
 | 15:15 | 5. Ratings + verified badge | Stars after pickup, badge and average on profile/cards |
 | 16:00 | 6. Fridges + handover spots | Fridge layer with check-ins |
 | 16:45 | 7. Alerts + impact | Notification feed, impact banner |
-| 17:30 | 8. Deploy | Live at app.dev.freshshare.food with seeded demo data |
+| 17:30 | 8. Deploy to AWS ECS | Live at app.dev.freshshare.food with seeded demo data |
 | 18:30 | 9. Polish + tests | Happy-path Playwright test green, mobile layout checked |
 | 19:15 | 10. Pitch rehearsal | Two full run-throughs with the live demo |
 
@@ -47,7 +46,7 @@ If you fall behind, cut in this order: 7 (alerts), then fridge check-ins (keep t
 Read CLAUDE.md and docs/03-architecture.md. Scaffold the monorepo exactly as described:
 - apps/api: Node 20 + Express + TypeScript + Prisma + zod + pino, with GET /api/health that checks the DB.
 - apps/web: React + Vite + TypeScript + Tailwind + react-leaflet, with one page showing a full-screen OpenStreetMap centred on Erlangen (49.5897, 11.0040).
-- infra/docker-compose.yml and infra/Caddyfile as in the architecture doc, Dockerfiles for api (multi-stage) and web (build with node, serve with caddy).
+- infra/docker-compose.yml and infra/Caddyfile as in the architecture doc, Dockerfiles at apps/api/Dockerfile (multi-stage) and apps/web/Dockerfile (build with node, serve with caddy), both built with the REPO ROOT as context. Follow the "Deployment contract (AWS ECS)" section: api on 4000, web on 80 with APP_DOMAIN, and do not change anything infra/README.md already defines.
 - Root package.json with npm workspaces and scripts: dev, build, test, lint, db:migrate, db:seed.
 - .env.example with every variable, .gitignore, and a short README "Run locally" section.
 Use plan mode first. When done, run `docker compose -f infra/docker-compose.yml up --build`, curl /api/health, and commit.
@@ -82,7 +81,7 @@ Use TanStack Query for data fetching. Show me screenshots at phone width, then c
 Add auth: POST /api/auth/register, /login, /logout, GET /api/me, JWT in an httpOnly cookie, bcrypt, zod validation, rate limiting on auth routes. Registration asks for name, email, password and home location picked on a small map.
 Web: sign-up, sign-in, and a protected route wrapper.
 Then build "Share food" (POST /api/listings, multipart): photo (camera capture on mobile), title, category, origin label, best-before date, pickup window, portions, optional allergens, optional handover spot, and a 3-item safety checklist that must all be ticked ("Stored cold", "Not past its date", "I would eat it myself"). Photo and date are required. Reject raw meat/fish (category rule) with a friendly message.
-Server: multer + sharp, resize to max 1024 px WebP, strip EXIF, 5 MB limit, image types only. Homemade listings expire after 48 h max.
+Server: multer + sharp, resize to max 1024 px WebP, strip EXIF, 5 MB limit, image types only. Save through a storage module with two drivers: STORAGE_DRIVER=local (uploads volume) and STORAGE_DRIVER=s3 (S3_BUCKET, URLs under PUBLIC_IMAGE_BASE_URL). Homemade listings expire after 48 h max.
 After posting, return to the map focused on the new pin. Goal: a new user can post in under 30 seconds. Test it, then commit.
 ```
 
@@ -124,15 +123,12 @@ Impact: GET /api/impact?lat&lng&radius returns portions and estimated kg collect
 Commit.
 ```
 
-## Block 8: Deploy (60 min)
+## Block 8: Deploy to AWS ECS (60 min)
 
 ```text
-Create infra/docker-compose.prod.yml (images from ghcr.io/<owner>/freshshare-api and -web tagged by git SHA, APP_DOMAIN=app.dev.freshshare.food, restart: unless-stopped) and .github/workflows/ci-deploy.yml:
-1. On push to main: npm ci, lint, test (with a postgres service container).
-2. Build and push both images to GHCR with tags sha and latest.
-3. SSH to DEPLOY_HOST as DEPLOY_USER, write .env from secrets, docker compose pull && up -d, run prisma migrate deploy, then seed only if the DB is empty.
-4. curl -f https://app.dev.freshshare.food/api/health or fail the job.
-Do not touch the existing survey site on dev.freshshare.food. Explain any manual steps I need to do on the server.
+Read infra/README.md and the "Deployment contract (AWS ECS)" section of docs/03-architecture.md. Check the app meets the contract: api on 4000 with GET /api/health, web Caddy on 80 with APP_DOMAIN=:80, Dockerfiles at apps/api/Dockerfile and apps/web/Dockerfile building from the repo root, STORAGE_DRIVER=s3 with S3_BUCKET and PUBLIC_IMAGE_BASE_URL, DATABASE_URL and JWT_SECRET from the environment, migrations via `npx prisma migrate deploy`.
+Fix any gaps in the app, not in the Terraform, unless infra/README.md says otherwise. Then trigger the deploy workflow, run migrations and the seed once against RDS as the README describes, and curl -f https://app.dev.freshshare.food/api/health.
+Do not touch the existing survey site on dev.freshshare.food. List any manual AWS steps I still need to do.
 ```
 
 ## Block 9: Polish + tests (45 min)

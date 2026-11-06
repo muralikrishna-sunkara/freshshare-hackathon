@@ -40,7 +40,7 @@ Demo (see the click path below): map → lasagne card with photo, date, homemade
 | 3 | **Two things stop them sharing** | Left: "Is it safe?" 16 of 17 worry. Right: "Where?" 0 of 17 know a community fridge nearby, 12 use no app. |
 | 4 | **Trust is the product** | Bar chart of trust builders: photos+dates 10, verified 8, ratings 8, homemade label 8. Quote: "Trust in the food shared and knowing that we are helping to save food." |
 | 5 | **FreshShare** (demo) | Phone screenshot of the map + listing card; switch to live demo. |
-| 6 | **Built for the 9 maybes** | Feature → survey reason table: map (9 asked), fridges (7), chat (7), photo+date (10), verified+ratings (8). Stack strip: React, Leaflet, Express, Postgres, Docker, GitHub Actions. |
+| 6 | **Built for the 9 maybes** | Feature → survey reason table: map (9 asked), fridges (7), chat (7), photo+date (10), verified+ratings (8). Stack strip: React, Leaflet, Express, Postgres, Docker, AWS ECS, GitHub Actions. |
 | 7 | **Next: one neighbourhood, two fridges** | Pilot plan, metric "maybe → yes", early-access count 3, ask. |
 
 ## Demo click path (60 seconds)

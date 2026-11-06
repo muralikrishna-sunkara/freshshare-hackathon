@@ -1,6 +1,6 @@
 # Architecture: built in a day, deployable by evening
 
-Guiding rule from the survey: **keep it simple**. One repo, one database, one VM, one `docker compose up`.
+Guiding rule from the survey: **keep it simple**. One repo, one database, one `docker compose up` locally, the same images on AWS ECS.
 
 ## Stack
 
@@ -11,12 +11,12 @@ Guiding rule from the survey: **keep it simple**. One repo, one database, one VM
 | API | Node 20 + Express + TypeScript + `zod` validation | Same stack as the earlier FreshShare platform, so you can reuse patterns. |
 | ORM / DB | Prisma + PostgreSQL 16 | Typed models, migrations and seeding in one tool. Distance queries with a bounding box + Haversine in SQL (no PostGIS needed for the demo). |
 | Auth | Email + password (bcrypt), JWT in an httpOnly cookie | No SMTP or OAuth setup on the day. |
-| Images | `multer` upload → `sharp` resize to 1024 px WebP → `/uploads` volume | S3-compatible storage is a later swap behind one function. |
+| Images | `multer` upload → `sharp` resize to 1024 px WebP → a storage driver: `STORAGE_DRIVER=local` writes to the `/uploads` volume (compose), `STORAGE_DRIVER=s3` writes to `S3_BUCKET` and returns URLs under `PUBLIC_IMAGE_BASE_URL` (AWS) | One `storage.put()` function, two drivers. |
 | Chat | REST + polling every 3 s | Socket.io is a stretch goal; polling is enough for a demo. |
 | Tests | Vitest + Supertest for the API, Playwright smoke test for the happy path | One test per P0 flow. |
-| Run | Docker Compose: `db`, `api`, `web` (Caddy serving the built SPA and proxying `/api`) | Same file locally and on the server. |
-| CI/CD | GitHub Actions: lint + test → build images → push to GHCR → SSH deploy (`docker compose pull && up -d`) | One workflow file. |
-| Hosting | One small VM (Hetzner CX22 or AWS t3.small) with Caddy auto-TLS | You already run dev.freshshare.food. |
+| Run | Docker Compose locally: `db`, `api`, `web` (Caddy serving the built SPA and proxying `/api`) | Same images run on AWS ECS. |
+| CI/CD | GitHub Actions: lint + test → build images → push to ECR → deploy to ECS | Terraform and workflows live in `infra/` (see `infra/README.md`). |
+| Hosting | AWS ECS behind an ALB; RDS PostgreSQL; S3 for photos; secrets in Secrets Manager | Infra is defined in Terraform on the AWS infra branch. |
 
 > **Do not overwrite the survey.** dev.freshshare.food is collecting responses. Deploy the app to a new subdomain such as `app.dev.freshshare.food` (one extra DNS A record), or behind `/app`, and keep the survey running.
 
@@ -228,16 +228,29 @@ LIMIT 100;
 - [ ] Secrets only in `.env` on the server and GitHub Actions secrets; `.env.example` committed.
 - [ ] Survey respondent emails never enter this repo or the app database.
 
+## Deployment contract (AWS ECS)
+
+The Terraform and GitHub Actions in `infra/` (see **`infra/README.md`**) expect the app to follow this contract. Build to it from Block 0 so deploy day is boring:
+
+| Item | Contract |
+|---|---|
+| API | Listens on port **4000**, `GET /api/health` returns 200 when the DB is reachable |
+| Web | Caddy on port **80**, `APP_DOMAIN=:80` (TLS terminates at the ALB) |
+| Dockerfiles | `apps/api/Dockerfile` and `apps/web/Dockerfile`, **built with the repo root as context** |
+| Images | `STORAGE_DRIVER=s3`, `S3_BUCKET`, `PUBLIC_IMAGE_BASE_URL`; `STORAGE_DRIVER=local` fallback for compose |
+| Secrets | `DATABASE_URL` and `JWT_SECRET` injected from AWS Secrets Manager |
+| Migrations | `npx prisma migrate deploy` (run as a one-off task before the new service version) |
+
 ## Ops (day-one minimum)
 
-- **Environments:** local (`docker compose up`) and `app.dev.freshshare.food`.
+- **Environments:** local (`docker compose up`) and AWS ECS at `app.dev.freshshare.food`.
 - **Health:** `/api/health` checks the DB; the deploy job curls it and fails the run if it is not 200.
-- **Logs:** `pino` JSON logs to stdout; `docker compose logs -f api`.
-- **Backups:** nightly `pg_dump` cron to the VM's disk (plus off-box copy after the hackathon).
-- **Rollback:** images tagged with the git SHA; redeploy the previous tag.
-- **Later:** managed Postgres, S3 for photos, uptime monitor, Sentry.
+- **Logs:** `pino` JSON logs to stdout (CloudWatch on ECS, `docker compose logs -f api` locally).
+- **Backups:** RDS automated backups.
+- **Rollback:** images tagged with the git SHA; redeploy the previous task definition.
+- **Later:** uptime monitor, Sentry, alarms.
 
-## Example `infra/docker-compose.yml`
+## Example `infra/docker-compose.yml` (local development)
 
 ```yaml
 services:
@@ -253,15 +266,16 @@ services:
       interval: 5s
       retries: 10
   api:
-    build: ../apps/api
+    build: { context: .., dockerfile: apps/api/Dockerfile }
     env_file: ../.env
     environment:
       DATABASE_URL: postgresql://freshshare:${POSTGRES_PASSWORD:-freshshare}@db:5432/freshshare
+      STORAGE_DRIVER: local
     depends_on:
       db: { condition: service_healthy }
     volumes: [uploads:/app/uploads]
   web:
-    build: ../apps/web
+    build: { context: .., dockerfile: apps/web/Dockerfile }
     ports: ["80:80", "443:443"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
@@ -274,7 +288,7 @@ volumes: { dbdata: {}, uploads: {}, caddydata: {} }
 ## Example `infra/Caddyfile`
 
 ```
-{$APP_DOMAIN:localhost} {
+{$APP_DOMAIN:localhost} {   # on ECS APP_DOMAIN=:80, TLS is at the ALB
   encode gzip
   handle /api/* { reverse_proxy api:4000 }
   handle /uploads/* { root * /srv; file_server }

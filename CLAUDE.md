@@ -16,7 +16,10 @@ FreshShare is a neighbourhood food-sharing web app: a map of free food from neig
 - "Keep it simple." Posting a listing should take under 30 seconds.
 
 ## Stack
-React 18 + Vite + TypeScript + Tailwind + react-leaflet (OSM tiles) · Node 20 + Express + TypeScript + zod + Prisma + PostgreSQL 16 · JWT httpOnly cookie auth · multer + sharp for photos · Docker Compose + Caddy · GitHub Actions → GHCR → SSH deploy to `app.dev.freshshare.food`.
+React 18 + Vite + TypeScript + Tailwind + react-leaflet (OSM tiles) · Node 20 + Express + TypeScript + zod + Prisma + PostgreSQL 16 · JWT httpOnly cookie auth · multer + sharp for photos · Docker Compose + Caddy locally · AWS ECS (ALB, RDS, S3, Secrets Manager) via Terraform + GitHub Actions in `infra/` to `app.dev.freshshare.food`.
+
+## Deployment contract (see `infra/README.md`)
+api on port 4000 with `GET /api/health` · web Caddy on 80 with `APP_DOMAIN=:80` · Dockerfiles `apps/api/Dockerfile` and `apps/web/Dockerfile` built from the repo root · `STORAGE_DRIVER=s3` + `S3_BUCKET` + `PUBLIC_IMAGE_BASE_URL` (`local` for compose) · `DATABASE_URL`, `JWT_SECRET` from Secrets Manager · migrations `npx prisma migrate deploy`.
 
 ## Conventions
 - TypeScript strict everywhere. Validate every request body and query with zod.
