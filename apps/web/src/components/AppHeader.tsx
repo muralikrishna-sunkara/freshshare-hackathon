@@ -29,7 +29,7 @@ export function AppHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link to="/share" className="rounded-full bg-accent px-4 py-2 text-sm font-bold text-white shadow-sm hover:brightness-95">
+          <Link to="/share" className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-bold text-white shadow-sm hover:brightness-95">
             + Share food
           </Link>
           {me.data ? (
@@ -43,7 +43,7 @@ export function AppHeader() {
             </Link>
           ) : (
             <>
-              <Link to={`/signin?next=${encodeURIComponent(loc.pathname === "/" ? "/map" : loc.pathname + loc.search)}`} className="rounded-lg px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-stone-100">Sign in</Link>
+              <Link to={`/signin?next=${encodeURIComponent(loc.pathname === "/" ? "/map" : loc.pathname + loc.search)}`} className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-brand-dark hover:bg-stone-100">Sign in</Link>
               <Link to="/signup" className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50 lg:inline">
                 Sign up
               </Link>

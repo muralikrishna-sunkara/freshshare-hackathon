@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { jitter, mulberry32 } from "../lib/geo.js";
 import type { Storage } from "../lib/storage.js";
 import { TERMS_VERSION } from "./rules.js";
+import { areaFor, seedHistory } from "./seedHistory.js";
 
 interface SeedFile {
   demoPassword: string;
@@ -15,7 +16,7 @@ interface SeedFile {
   listings: {
     key: string; giver: string; title: string; description?: string; category: Category; origin: Origin; allergens: string[];
     bestBeforeOffsetMin: number; createdOffsetMin: number; pickupFromOffsetMin: number; pickupUntilOffsetMin: number;
-    portions: number; photo: string; handoverSpot: string | null; status: ListingStatus;
+    portions: number; photo: string; handoverSpot: string | null; status: ListingStatus; dietaryTags?: string[]; weightKg?: number;
   }[];
   claims: {
     listing: string; receiver: string; status: ClaimStatus; createdOffsetMin: number; holdMinutes?: number;
@@ -54,7 +55,11 @@ export interface SeedResult {
 }
 
 /** FULL RESET of the demo database, then load data/seed.json and upload photos via storage. */
-export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { dir?: string; log?: (m: string) => void; bcryptCost?: number } = {}): Promise<SeedResult> {
+export async function runSeed(
+  prisma: PrismaClient,
+  storage: Storage,
+  opts: { dir?: string; log?: (m: string) => void; bcryptCost?: number; history?: boolean } = {},
+): Promise<SeedResult> {
   const log = opts.log ?? (() => {});
   const dir = opts.dir ?? findSeedDir();
   const seed = JSON.parse(await readFile(path.join(dir, "seed.json"), "utf8")) as SeedFile;
@@ -100,8 +105,15 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
   }
   log(`users: ${seed.users.length}`);
 
+  // Same pipeline as real uploads (EXIF stripped, 1600 px WebP). Each source photo is uploaded once per run
+  // to seed/<name>.webp and shared by every listing that uses it.
   const toWebp = async (file: string) =>
-    sharp(await readFile(path.join(dir, "seed-photos", file))).rotate().resize(1024, 1024, { fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+    sharp(await readFile(path.join(dir, "seed-photos", file))).rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+  const uploaded = new Map<string, Promise<string>>();
+  const photoUrl = (file: string) => {
+    if (!uploaded.has(file)) uploaded.set(file, toWebp(file).then((buf) => storage.put(`seed/${file.replace(/\.\w+$/, "")}.webp`, buf, "image/webp")));
+    return uploaded.get(file)!;
+  };
 
   const listings: Record<string, string> = {};
   for (const l of seed.listings) {
@@ -110,13 +122,14 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
     const row = await prisma.listing.create({
       data: {
         giverId: users[l.giver], title: l.title, description: l.description ?? null, category: l.category, origin: l.origin,
-        allergens: l.allergens, bestBefore: at(l.bestBeforeOffsetMin), photoUrl: "", lat: home.lat, lng: home.lng,
+        allergens: l.allergens, dietaryTags: l.dietaryTags ?? [], weightKg: l.weightKg ?? null, ...areaFor(home.lat, home.lng),
+        bestBefore: at(l.bestBeforeOffsetMin), photoUrl: "", lat: home.lat, lng: home.lng,
         publicLat: pub.lat, publicLng: pub.lng, handoverSpot: l.handoverSpot, pickupFrom: at(l.pickupFromOffsetMin),
         pickupUntil: at(l.pickupUntilOffsetMin), portions: l.portions, status: l.status, createdAt: at(l.createdOffsetMin),
       },
     });
-    const photoUrl = await storage.put(`listings/${row.id}.webp`, await toWebp(l.photo), "image/webp");
-    await prisma.listing.update({ where: { id: row.id }, data: { photoUrl } });
+    const url = await photoUrl(l.photo);
+    await prisma.listing.update({ where: { id: row.id }, data: { photoUrl: url, photos: [url] } });
     listings[l.key] = row.id;
   }
   log(`listings: ${seed.listings.length} (photos uploaded)`);
@@ -153,8 +166,7 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
   for (const f of seed.fridges) {
     const row = await prisma.fridge.create({ data: { name: f.name, address: f.address, lat: f.lat, lng: f.lng, openingHours: f.openingHours } });
     if (f.photo) {
-      const photoUrl = await storage.put(`fridges/${row.id}.webp`, await toWebp(f.photo), "image/webp");
-      await prisma.fridge.update({ where: { id: row.id }, data: { photoUrl } });
+      await prisma.fridge.update({ where: { id: row.id }, data: { photoUrl: await photoUrl(f.photo) } });
     }
     if (f.lastCheckIn) {
       await prisma.fridgeCheckIn.create({
@@ -195,6 +207,10 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
   }
   await prisma.setting.create({ data: { key: "impactBaselinePortions", value: String(seed.impactBaseline?.portionsThisWeek ?? 0) } });
   log("alerts and settings done");
+
+  if (opts.history ?? true) {
+    await seedHistory(prisma, { users, centre: seed.mapCentre, now, rand, passwordHash, photoUrl, log });
+  }
 
   return { dir, users, listings, fridges, organizations, now };
 }

@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
-import { adminDecide, fetchAdminPending } from "../api/client";
+import { useState, type ReactNode } from "react";
+import { Link, Navigate } from "react-router-dom";
+import { adminDecide, fetchAdminPending, fetchAdminReports, fetchEarlyAccessStats, resolveReport } from "../api/client";
 import { ErrorNote, Page } from "../components/Page";
 import { Skeleton } from "../components/States";
 import { useMe } from "../hooks/useMe";
-import { formatDay, FRIDGE_KIND, ORG_TYPE } from "../lib/format";
+import { EARLY_ROLE, formatDay, FRIDGE_KIND, ORG_TYPE, REPORT_REASON } from "../lib/format";
 
 function Card({ title, sub, children, actions }: { title: string; sub: string; children: ReactNode; actions: ReactNode }) {
   return (
@@ -20,7 +20,7 @@ function Card({ title, sub, children, actions }: { title: string; sub: string; c
   );
 }
 
-/** /admin: approve fridges and organizations (site admins only). */
+/** /admin: approvals, the reports queue and early-access sign-ups (site admins only). */
 export function AdminPage() {
   const me = useMe();
   const qc = useQueryClient();
@@ -44,6 +44,12 @@ export function AdminPage() {
   );
   return (
     <Page title="Admin" wide>
+      <nav aria-label="Admin sections" className="mb-4 flex flex-wrap gap-2 text-sm">
+        {[["#approvals", "Approvals"], ["#reports", "Reports"], ["#early-access", "Early access"]].map(([href, label]) => (
+          <a key={href} href={href} className="rounded-full bg-white px-3 py-1.5 font-semibold ring-1 ring-stone-200 hover:ring-brand">{label}</a>
+        ))}
+      </nav>
+      <h2 id="approvals" className="mb-3 text-lg font-bold">Approvals</h2>
       <ErrorNote error={q.error ?? decide.error} />
       {q.isLoading && <Skeleton rows={4} />}
       {q.data && (
@@ -81,6 +87,135 @@ export function AdminPage() {
           </section>
         </div>
       )}
+      <ReportsQueue />
+      <EarlyAccess />
     </Page>
+  );
+}
+
+function ReportsQueue() {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<"open" | "resolved">("open");
+  const q = useQuery({ queryKey: ["admin-reports", status], queryFn: () => fetchAdminReports(status) });
+  const resolve = useMutation({
+    mutationFn: (v: { id: string; action: "dismiss" | "remove_listing" }) => resolveReport(v.id, v.action),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-reports"] });
+      qc.invalidateQueries({ queryKey: ["listings"] });
+    },
+  });
+  return (
+    <section className="mt-8" aria-labelledby="reports">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="reports" className="text-lg font-bold">Reports{status === "open" && q.data ? ` (${q.data.reports.length} open)` : ""}</h2>
+        <div role="group" aria-label="Report status" className="flex gap-1 text-sm">
+          {(["open", "resolved"] as const).map((s) => (
+            <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)} className={`min-h-[36px] rounded-full px-3 font-semibold ${status === s ? "bg-brand-dark text-white" : "ring-1 ring-stone-300"}`}>
+              {s === "open" ? "Open" : "Resolved"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ErrorNote error={q.error ?? resolve.error} />
+      {q.isLoading && <Skeleton rows={3} />}
+      {q.data && q.data.reports.length === 0 && (
+        <p className="rounded-2xl bg-white p-4 text-sm text-stone-500 ring-1 ring-stone-200">{status === "open" ? "No open reports. 🎉" : "Nothing resolved yet."}</p>
+      )}
+      {q.data && q.data.reports.length > 0 && (
+        <ul className="grid gap-3 lg:grid-cols-2">
+          {q.data.reports.map((r) => (
+            <li key={r.id} className="flex gap-3 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+              {r.listing && <img src={r.listing.photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}
+              <div className="min-w-0 flex-1 space-y-1 text-sm">
+                <p className="font-bold">
+                  <span className="mr-2 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-800">{REPORT_REASON[r.reason]}</span>
+                  {r.listing ? (
+                    <Link className="underline" to={`/listings/${r.listing.id}`}>{r.listing.title}</Link>
+                  ) : r.reportedUser ? (
+                    <Link className="underline" to={`/users/${r.reportedUser.id}`}>{r.reportedUser.name}</Link>
+                  ) : "Deleted item"}
+                </p>
+                <p className="text-xs text-stone-500">
+                  Reported by {r.reporter.name} on {formatDay(r.createdAt)}
+                  {r.listing && ` · listing is ${r.listing.status}`}
+                  {r.resolvedAt && ` · resolved ${formatDay(r.resolvedAt)}`}
+                </p>
+                {r.note && <p className="text-stone-700">“{r.note}”</p>}
+                {r.status === "open" && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button className="min-h-[40px] rounded-full px-4 font-semibold ring-1 ring-stone-300" disabled={resolve.isPending} onClick={() => resolve.mutate({ id: r.id, action: "dismiss" })}>
+                      Dismiss
+                    </button>
+                    {r.listing && ["available", "reserved"].includes(r.listing.status) && (
+                      <button className="min-h-[40px] rounded-full bg-red-700 px-4 font-bold text-white" disabled={resolve.isPending} onClick={() => resolve.mutate({ id: r.id, action: "remove_listing" })}>
+                        Remove listing
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Bars({ rows }: { rows: { label: string; count: number }[] }) {
+  const max = Math.max(1, ...rows.map((r) => r.count));
+  return (
+    <ul className="space-y-2">
+      {rows.map((r) => (
+        <li key={r.label} className="grid grid-cols-[8.5rem_1fr_2.5rem] items-center gap-2 text-sm">
+          <span className="truncate text-stone-700">{r.label}</span>
+          <span className="h-3 rounded-full bg-stone-100">
+            <span className="block h-3 rounded-full bg-brand" style={{ width: `${(r.count / max) * 100}%` }} />
+          </span>
+          <span className="text-right font-semibold tabular-nums">{r.count}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EarlyAccess() {
+  const q = useQuery({ queryKey: ["admin-early-access"], queryFn: fetchEarlyAccessStats });
+  return (
+    <section className="mt-8" aria-labelledby="early-access">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="early-access" className="text-lg font-bold">Early access{q.data ? ` (${q.data.total} sign-ups)` : ""}</h2>
+        <a href="/api/admin/early-access.csv" download className="min-h-[40px] rounded-full bg-brand-dark px-4 py-2 text-sm font-bold text-white">
+          Download CSV
+        </a>
+      </div>
+      <ErrorNote error={q.error} />
+      {q.isLoading && <Skeleton rows={3} />}
+      {q.data && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+            <h3 className="mb-3 font-semibold">By role</h3>
+            <Bars rows={q.data.byRole.map((r) => ({ label: EARLY_ROLE[r.role] ?? r.role, count: r.count }))} />
+          </div>
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+            <h3 className="mb-3 font-semibold">By source</h3>
+            <Bars rows={q.data.bySource.map((r) => ({ label: r.source, count: r.count }))} />
+          </div>
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+            <h3 className="mb-3 font-semibold">Latest</h3>
+            {q.data.latest.length === 0 ? <p className="text-sm text-stone-500">No sign-ups yet.</p> : (
+              <ul className="divide-y divide-stone-100 text-sm">
+                {q.data.latest.slice(0, 8).map((s) => (
+                  <li key={s.id} className="flex justify-between gap-2 py-1.5">
+                    <span className="min-w-0 truncate">{s.email}</span>
+                    <span className="shrink-0 text-xs text-stone-500">{EARLY_ROLE[s.role]} · {formatDay(s.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

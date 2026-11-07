@@ -64,7 +64,7 @@ describe("GET /api/listings", () => {
       expect(l).not.toHaveProperty("lng");
       expect(l).not.toHaveProperty("handoverSpot");
       expect(l.publicLat).toEqual(expect.any(Number));
-      expect(l.photoUrl).toMatch(/^\/uploads\/listings\/.+\.webp$/);
+      expect(l.photoUrl).toMatch(/^\/uploads\/(listings|seed)\/.+\.webp$/);
     }
   });
 

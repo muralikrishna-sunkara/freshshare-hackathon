@@ -22,7 +22,7 @@ describe("GET /api/fridges", () => {
     expect([...keys].sort()).toEqual([...seedFile.expectedResults.fridgesWithin2km].sort());
     const parish = res.body.fridges.find((f: { id: string }) => f.id === seed.fridges.parish);
     expect(parish.lastCheckIn.state).toBe("stocked");
-    expect(parish.photoUrl).toMatch(/fridges\/.+\.webp$/);
+    expect(parish.photoUrl).toMatch(/seed\/.+\.webp$/);
   });
 
   it("returns none far away", async () => {

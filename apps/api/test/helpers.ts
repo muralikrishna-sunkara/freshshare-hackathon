@@ -10,13 +10,13 @@ export const seedFile = JSON.parse(readFileSync(path.join(seedDir, "seed.json"),
 
 export async function seedDb(): Promise<SeedResult> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), "fs-uploads-"));
-  return runSeed(prisma, localStorage(tmp, "/uploads"), { bcryptCost: 4 });
+  return runSeed(prisma, localStorage(tmp, "/uploads"), { bcryptCost: 4, history: false });
 }
 
 import request from "supertest";
 import type { Express } from "express";
 
-export const photoPath = path.join(seedDir, "seed-photos", "lasagne.jpg");
+export const photoPath = path.join(seedDir, "seed-photos", "pasta.jpg");
 
 export async function loginAs(app: Express, key: string) {
   const agent = request.agent(app);

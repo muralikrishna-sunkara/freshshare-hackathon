@@ -313,3 +313,26 @@ export interface AdminPending {
 export const fetchAdminPending = () => api<AdminPending>("/admin/pending");
 export const adminDecide = (kind: "fridges" | "organizations", id: string, decision: "approve" | "reject") =>
   api<{ status: string }>(`/admin/${kind}/${id}/${decision}`, { method: "POST" });
+
+export interface AdminReport {
+  id: string;
+  reason: ReportReason;
+  note: string | null;
+  status: "open" | "resolved";
+  createdAt: string;
+  resolvedAt: string | null;
+  reporter: { id: string; name: string };
+  listing: { id: string; title: string; status: string; photoUrl: string; giverId: string } | null;
+  reportedUser: { id: string; name: string } | null;
+}
+export const fetchAdminReports = (status: "open" | "resolved" = "open") => api<{ reports: AdminReport[] }>(`/admin/reports?status=${status}`);
+export const resolveReport = (id: string, action: "dismiss" | "remove_listing") =>
+  api<{ ok: true }>(`/admin/reports/${id}/resolve`, json({ action }));
+
+export interface EarlyAccessStats {
+  total: number;
+  byRole: { role: EarlyAccessRole; count: number }[];
+  bySource: { source: string; count: number }[];
+  latest: { id: string; email: string; role: EarlyAccessRole; postcode: string | null; source: string | null; createdAt: string }[];
+}
+export const fetchEarlyAccessStats = () => api<EarlyAccessStats>("/admin/early-access");

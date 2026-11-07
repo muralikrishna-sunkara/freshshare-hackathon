@@ -65,7 +65,8 @@ describe("POST /api/listings", () => {
   });
 
   it("requires sign-in", async () => {
-    const res = await post(request.agent(app), valid());
+    // No photo: the API answers 401 before reading the body, and a large upload would then hit EPIPE.
+    const res = await post(request.agent(app), valid(), false);
     expect(res.status).toBe(401);
   });
 

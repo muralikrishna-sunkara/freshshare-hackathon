@@ -96,3 +96,11 @@ export const BULK_STATUS: Record<BulkStatus, { label: string; tone: string }> = 
   completed: { label: "Completed", tone: "bg-brand text-white" },
   cancelled: { label: "Cancelled", tone: "bg-stone-100 text-stone-600" },
 };
+
+export const EARLY_ROLE: Record<string, string> = {
+  giver: "Givers",
+  receiver: "Receivers",
+  business: "Shops & cafés",
+  fridge_host: "Fridge hosts",
+  organization: "Food banks & NGOs",
+};

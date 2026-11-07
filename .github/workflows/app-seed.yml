@@ -17,6 +17,10 @@ on:
         description: "Run prisma db seed (resets demo data)"
         type: boolean
         default: true
+      clean_test:
+        description: "Only delete @example.test accounts and their data (no reset)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -64,6 +68,7 @@ jobs:
           TASK_DEF: ${{ steps.td.outputs.arn }}
           DO_MIGRATE: ${{ inputs.migrate }}
           DO_SEED: ${{ inputs.seed }}
+          DO_CLEAN: ${{ inputs.clean_test }}
         run: |
           set -euo pipefail
           run_task() {
@@ -85,4 +90,5 @@ jobs:
           }
           [ "$DO_MIGRATE" = "true" ] && run_task "Migrate" npx prisma migrate deploy
           [ "$DO_SEED" = "true" ] && run_task "Seed" npx prisma db seed
+          [ "$DO_CLEAN" = "true" ] && run_task "Clean test users" npx tsx prisma/clean-test.ts
           true

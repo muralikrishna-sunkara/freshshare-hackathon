@@ -1,3 +1,4 @@
+import { ApiError } from "../api/client";
 import type { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
 import { Footer } from "./Footer";
@@ -26,7 +27,22 @@ export function ErrorNote({ error }: { error: unknown }) {
   if (!error) return null;
   return (
     <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
-      {error instanceof Error ? error.message : "Something went wrong"}
+      {plainError(error)}
     </p>
   );
+}
+
+/** A sentence a person can act on, never a status code or a stack trace. */
+export function plainError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status >= 500) return "Something went wrong on our side. Please try again in a moment.";
+    // The API sends friendly messages; fall back only when a proxy answered with a bare status text.
+    if (error.code !== "error" && error.message) return error.message;
+    if (error.status === 401) return "Please sign in to do that.";
+    if (error.status === 403) return "You don't have access to this.";
+    if (error.status === 429) return "That was a lot of tries. Please wait a minute and try again.";
+    return "Something went wrong. Please try again.";
+  }
+  if (error instanceof TypeError) return "We couldn't reach FreshShare. Check your connection and try again.";
+  return "Something went wrong. Please try again.";
 }

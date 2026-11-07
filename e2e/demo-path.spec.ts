@@ -22,7 +22,7 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   const portionsBefore = Number((await banner.innerText()).match(/saved (\d+) portions/)![1]);
 
   // Open the lasagne from the list view (pins can overlap)
-  // Desktop shows the list in the sidebar; on a phone switch to the list view.
+  // Switch to the detailed list view (desktop and phone).
   const listTab = sara.getByRole("tab", { name: "list" });
   if (await listTab.isVisible()) await listTab.click();
   await sara.getByRole("heading", { name: "Vegetable lasagne, 3 portions" }).click();
