@@ -180,9 +180,12 @@ export const SCENES: Scene[] = [
         await moveTo(p, p.getByText(/Add a photo|Photo/).first());
         await p.getByLabel("Photo", { exact: true }).setInputFiles(photo("rolls.jpg"));
         await expect(p.getByRole("img", { name: /photo/i }).first()).toBeVisible();
+        // With an AI key on the server, Fill from photo runs by itself on the first photo; let it finish
+        // so it doesn't overwrite the title typed below.
+        await p.getByText("Looking at your photo…").waitFor({ state: "hidden", timeout: 30_000 }).catch(() => {});
         await beat(p, 500);
         await type(p, p.getByLabel("What is it?"), "Bread rolls from this morning, 6 pieces");
-        await moveTo(p, p.getByLabel("Best before (required)"));
+        await moveTo(p, p.getByLabel("Best before"));
         await beat(p, 400);
         for (const c of ["Stored cold", "Not past its date", "I would eat it myself"]) await click(p, p.getByLabel(new RegExp(c)), 150);
         await click(p, p.getByRole("button", { name: "Post to the map" }), 0);
@@ -204,7 +207,7 @@ export const SCENES: Scene[] = [
       await probe.ctx.close();
       const word = (pick?.title.split(/[\s,]+/).find((w) => w.length > 3) ?? "bread").toLowerCase();
       const v = await stage.open(null, "Visitor");
-      await go(v.page, "/map");
+      await go(v.page, "/map?view=map&km=2");
       await expect(v.page.getByText(/listings? within 2 km/).first()).toBeVisible();
       await expect(v.page.locator(".leaflet-container")).toBeVisible();
       await stage.shoot(v, async (p) => {
@@ -274,7 +277,7 @@ export const SCENES: Scene[] = [
         await click(r, r.getByRole("button", { name: "Reserve" }), 0);
         await expect(r).toHaveURL(/\/pickups\//);
         await expect(r.getByRole("status")).toContainText("Waiting for Anna to confirm");
-        await expect(r.getByText("Open in maps")).toHaveCount(0);
+        await expect(r.getByRole("group", { name: "Directions" })).toHaveCount(0);
         state.claimId = r.url().split("/pickups/")[1].split("?")[0];
         await beat(r);
 
@@ -286,7 +289,7 @@ export const SCENES: Scene[] = [
         await expect(l.getByRole("status")).toContainText("Confirmed");
         await beat(l, 600);
 
-        const maps = r.getByText("Open in maps");
+        const maps = r.getByRole("group", { name: "Directions" });
         if (!(await maps.isVisible().catch(() => false))) {
           await r.waitForTimeout(1500);
           if (!(await maps.isVisible())) {
@@ -716,7 +719,7 @@ export const SCENES: Scene[] = [
     id: "phone",
     run: async ({ stage }) => {
       const v = await stage.open(null, "Phone · 390 px", "phone");
-      await go(v.page, "/map");
+      await go(v.page, "/map?view=map&km=2");
       await expect(v.page.getByText(/listings? within 2 km/).first()).toBeVisible();
       await stage.shoot(v, async (p) => {
         await beat(p, 1200);
