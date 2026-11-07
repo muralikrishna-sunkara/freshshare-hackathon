@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+apps/api/uploads
+.git
+infra/terraform
+pitch
+docs
+*.md
+!apps/**/*.md
+.env

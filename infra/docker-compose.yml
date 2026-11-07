@@ -1,0 +1,35 @@
+# Full stack locally:  docker compose -f infra/docker-compose.yml up --build
+# Then: docker compose -f infra/docker-compose.yml exec api npx prisma db seed
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: freshshare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-freshshare}
+      POSTGRES_DB: freshshare
+    ports: ["5432:5432"]
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freshshare"]
+      interval: 5s
+      retries: 10
+  api:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    environment:
+      DATABASE_URL: postgresql://freshshare:${POSTGRES_PASSWORD:-freshshare}@db:5432/freshshare
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret}
+      STORAGE_DRIVER: local
+      PUBLIC_IMAGE_BASE_URL: /uploads
+      APP_URL: http://localhost
+    # Apply migrations on start locally (on ECS they run as a one-off task)
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/src/index.js"]
+    depends_on:
+      db: { condition: service_healthy }
+    volumes: [uploads:/app/uploads]
+  web:
+    build: { context: .., dockerfile: apps/web/Dockerfile }
+    environment:
+      APP_DOMAIN: ":80"
+    ports: ["80:80"]
+    depends_on: [api]
+volumes: { dbdata: {}, uploads: {} }
