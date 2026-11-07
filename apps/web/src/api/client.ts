@@ -51,3 +51,20 @@ export const fetchNearby = (lat: number, lng: number, radius: number, category?:
   if (category) q.set("category", category);
   return api<{ listings: Listing[] }>(`/listings?${q}`).then((r) => r.listings);
 };
+
+export interface Fridge {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  openingHours: string;
+  photoUrl: string | null;
+  distanceM: number;
+  lastCheckIn: { state: "stocked" | "empty" | "needs_cleaning"; at: string } | null;
+}
+
+export const fetchFridges = (lat: number, lng: number, radius: number) =>
+  api<{ fridges: Fridge[] }>(`/fridges?${new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) })}`).then(
+    (r) => r.fridges,
+  );
