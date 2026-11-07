@@ -37,6 +37,21 @@ enum ClaimStatus {
   collected
   cancelled
   lapsed
+  declined
+}
+
+enum ReportReason {
+  unsafe_food
+  prohibited_item
+  spam
+  no_show
+  harassment
+  other
+}
+
+enum ReportStatus {
+  open
+  resolved
 }
 
 enum UserRole {
@@ -89,6 +104,11 @@ model Listing {
   allergens    String[]
   bestBefore   DateTime
   photoUrl     String
+  photos       String[]
+  dietaryTags  String[]
+  weightKg     Float?
+  postcode     String?
+  areaName     String?
   lat          Float
   lng          Float
   publicLat    Float
@@ -183,11 +203,18 @@ model Setting {
 }
 
 model Report {
-  id        String   @id @default(cuid())
-  listingId String
-  userId    String
-  reason    String
-  createdAt DateTime @default(now())
+  id             String       @id @default(cuid())
+  listingId      String?
+  reportedUserId String?
+  userId         String
+  reason         ReportReason
+  note           String?
+  status         ReportStatus @default(open)
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([status])
 }
 
 model EarlyAccessSignup {

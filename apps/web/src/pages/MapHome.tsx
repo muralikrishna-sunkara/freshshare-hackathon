@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchFridges, fetchImpact, fetchListing, fetchNearby, type Category, type Fridge, type Listing } from "../api/client";
+import { fetchFridges, fetchImpact, fetchListing, fetchNearby, type Category, type DietaryTag, type Fridge, type Listing } from "../api/client";
 import { AppHeader } from "../components/AppHeader";
 import { BottomSheet } from "../components/BottomSheet";
 import { FridgeSheet } from "../components/FridgeSheet";
@@ -12,9 +12,9 @@ import { SidePanel } from "../components/SidePanel";
 import { useLocation } from "../hooks/useLocation";
 import { useIsDesktop } from "../hooks/useMediaQuery";
 import { useMe } from "../hooks/useMe";
-import { CATEGORY, formatDistance } from "../lib/format";
+import { CATEGORY, DIETARY, formatDistance } from "../lib/format";
 
-const RADII = [500, 1000, 2000] as const;
+const RADII = [1000, 2000, 5000, 10000] as const;
 const chipBase = "shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition min-h-[40px]";
 const chipOn = "bg-brand-dark text-white";
 const chipOff = "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50";
@@ -22,13 +22,30 @@ const chipOff = "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50
 export function MapHome() {
   const loc = useLocation();
   const isDesktop = useIsDesktop();
-  const [radius, setRadius] = useState<number>(2000);
-  const [category, setCategory] = useState<Category | undefined>();
   const [view, setView] = useState<"map" | "list">("map");
   const [selected, setSelected] = useState<Listing | null>(null);
   const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
-  const [showFridges, setShowFridges] = useState(true);
   const [params, setParams] = useSearchParams();
+  // Filters live in the URL so a filtered view can be shared or bookmarked.
+  const radiusParam = Number(params.get("km")) * 1000;
+  const radius: number = (RADII as readonly number[]).includes(radiusParam) ? radiusParam : 2000;
+  const category = (params.get("category") as Category | null) ?? undefined;
+  const diet = (params.get("diet") as DietaryTag | null) ?? undefined;
+  const showFridges = params.get("fridges") !== "0";
+  const setFilter = (key: string, value: string | undefined) =>
+    setParams(
+      (p) => {
+        const n = new URLSearchParams(p);
+        if (value === undefined) n.delete(key);
+        else n.set(key, value);
+        return n;
+      },
+      { replace: true },
+    );
+  const setRadius = (r: number) => setFilter("km", r === 2000 ? undefined : String(r / 1000));
+  const setCategory = (c: Category | undefined) => setFilter("category", c);
+  const setDiet = (d: DietaryTag | undefined) => setFilter("diet", d);
+  const setShowFridges = (f: (v: boolean) => boolean) => setFilter("fridges", f(showFridges) ? undefined : "0");
   const focusId = params.get("listing");
   const me = useMe();
 
@@ -39,7 +56,7 @@ export function MapHome() {
   }, [focusQ.data]);
   const closeListing = () => {
     setSelected(null);
-    if (focusId) setParams({}, { replace: true });
+    if (focusId) setFilter("listing", undefined);
   };
   const openListing = (l: Listing) => {
     setSelectedFridge(null);
@@ -51,8 +68,8 @@ export function MapHome() {
   };
 
   const listingsQ = useQuery({
-    queryKey: ["listings", loc.lat, loc.lng, radius, category],
-    queryFn: () => fetchNearby(loc.lat, loc.lng, radius, category),
+    queryKey: ["listings", loc.lat, loc.lng, radius, category, diet],
+    queryFn: () => fetchNearby(loc.lat, loc.lng, radius, category, diet),
   });
   const fridgesQ = useQuery({
     queryKey: ["fridges", loc.lat, loc.lng, radius],
@@ -107,6 +124,18 @@ export function MapHome() {
           {CATEGORY[c].emoji} {CATEGORY[c].label}
         </button>
       ))}
+      {!isDesktop && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
+      <select
+        aria-label="Dietary"
+        value={diet ?? ""}
+        onChange={(e) => setDiet((e.target.value || undefined) as DietaryTag | undefined)}
+        className={`${chipBase} ${diet ? chipOn : chipOff} pr-8`}
+      >
+        <option value="">Any diet</option>
+        {(Object.keys(DIETARY) as DietaryTag[]).map((d) => (
+          <option key={d} value={d}>{DIETARY[d]}</option>
+        ))}
+      </select>
     </div>
   );
 

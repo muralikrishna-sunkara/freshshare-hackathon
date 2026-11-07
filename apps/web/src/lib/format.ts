@@ -1,4 +1,4 @@
-import type { Category, Origin } from "../api/client";
+import type { Category, DietaryTag, Origin, ReportReason } from "../api/client";
 
 export const CATEGORY: Record<Category, { label: string; color: string; emoji: string }> = {
   leftovers: { label: "Leftovers", color: "#d9a23c", emoji: "🍲" },
@@ -31,3 +31,31 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 export const allergenLabel = (a: string) => a.charAt(0).toUpperCase() + a.slice(1);
+
+export const DIETARY: Record<DietaryTag, string> = {
+  vegetarian: "Vegetarian",
+  vegan: "Vegan",
+  gluten_free: "Gluten-free",
+  lactose_free: "Lactose-free",
+  halal: "Halal",
+  kosher: "Kosher",
+  nut_free: "Nut-free",
+};
+
+export const REPORT_REASON: Record<ReportReason, string> = {
+  unsafe_food: "Unsafe food",
+  prohibited_item: "Prohibited item",
+  spam: "Spam",
+  no_show: "No-show",
+  harassment: "Harassment",
+  other: "Other",
+};
+
+/** "3 h left", "45 min left" or "ended" until the end of the pickup window. */
+export function timeLeft(iso: string, now = Date.now()): string {
+  const min = Math.round((new Date(iso).getTime() - now) / 60000);
+  if (min <= 0) return "pickup ended";
+  if (min < 60) return `${min} min left`;
+  const h = Math.round(min / 60);
+  return h < 48 ? `${h} h left` : `${Math.round(h / 24)} days left`;
+}

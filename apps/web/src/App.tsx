@@ -3,6 +3,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import { ClaimPage } from "./pages/ClaimPage";
 import { ContactPage, ImprintPage, NotFoundPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
 import { Landing } from "./pages/Landing";
+import { ListingPage } from "./pages/ListingPage";
 import { MapHome } from "./pages/MapHome";
 import { Pickups } from "./pages/Pickups";
 import { Profile } from "./pages/Profile";
@@ -23,6 +24,7 @@ export function App() {
         <Route path="/imprint" element={<ImprintPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/users/:id" element={<PublicProfile />} />
+        <Route path="/listings/:id" element={<ListingPage />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route

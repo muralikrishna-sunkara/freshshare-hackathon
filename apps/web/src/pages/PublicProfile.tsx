@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, fetchPublicProfile } from "../api/client";
 import { Page } from "../components/Page";
+import { ReportButton } from "../components/ReportButton";
 import { Stars } from "../components/Stars";
 import { VerifiedBadge } from "../components/VerifiedBadge";
 import { useMe } from "../hooks/useMe";
@@ -41,8 +42,10 @@ export function PublicProfile() {
               <Stars avg={u.ratingAvg} count={u.ratingCount} />
             </div>
             <p className="text-sm text-stone-600">Member since {new Date(u.memberSince).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
-            {me.data?.id === u.id && (
+            {me.data?.id === u.id ? (
               <Link to="/profile" className="text-sm font-semibold text-brand-dark underline">Edit your profile</Link>
+            ) : (
+              <ReportButton userId={u.id} label="Report this person" />
             )}
           </div>
         </section>

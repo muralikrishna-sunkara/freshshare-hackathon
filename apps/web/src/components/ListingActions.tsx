@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { fetchListing, reserveListing, type Listing } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, primaryBtn } from "./Page";
+import { ReportButton } from "./ReportButton";
 
 /** Reserve button and status under the card in the bottom sheet. */
 export function ListingActions({ listing }: { listing: Listing }) {
@@ -23,9 +24,12 @@ export function ListingActions({ listing }: { listing: Listing }) {
 
   if (d?.isMine) {
     return (
-      <div className="px-4 pb-6">
+      <div className="space-y-2 px-4 pb-6">
         <Link to="/pickups" className="block rounded-xl bg-stone-100 p-3 text-center text-sm font-semibold">
           This is your listing · see requests in My pickups
+        </Link>
+        <Link to={`/share?from=${listing.id}`} className="block rounded-xl p-3 text-center text-sm font-semibold text-brand-dark ring-1 ring-stone-300">
+          Post again
         </Link>
       </div>
     );
@@ -57,6 +61,10 @@ export function ListingActions({ listing }: { listing: Listing }) {
       <p className="text-center text-sm text-stone-600">
         You'll get the exact address once {firstName} confirms. Meet in a public place if you prefer.
       </p>
+      <div className="flex items-center justify-center gap-4 text-sm">
+        <Link to={`/listings/${listing.id}`} className="font-semibold text-brand-dark underline">Open full page</Link>
+        <ReportButton listingId={listing.id} label="Report listing" />
+      </div>
     </div>
   );
 }

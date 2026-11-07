@@ -15,3 +15,6 @@ export const TERMS_VERSION = "2026-11-03";
 
 /** Emails ending here are test accounts and are left out of public stats. */
 export const TEST_EMAIL_SUFFIX = "@example.test";
+
+export const DIETARY_TAGS = ["vegetarian", "vegan", "gluten_free", "lactose_free", "halal", "kosher", "nut_free"] as const;
+export const REPORT_REASONS = ["unsafe_food", "prohibited_item", "spam", "no_show", "harassment", "other"] as const;

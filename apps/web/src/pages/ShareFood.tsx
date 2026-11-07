@@ -1,9 +1,21 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { createListing, type Category, type Origin } from "../api/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { createListing, fetchListing, type Category, type DietaryTag, type Origin } from "../api/client";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
-import { CATEGORY, ORIGIN } from "../lib/format";
+import { CATEGORY, DIETARY, ORIGIN } from "../lib/format";
+
+const MAX_PHOTOS = 4;
+
+/** Quick posting: picking a category pre-fills sensible defaults the giver can still change. */
+const TEMPLATES: Record<Category, { placeholder: string; origin?: Origin; dietary: DietaryTag[]; allergens: string[]; bestBeforeDays: number }> = {
+  leftovers: { placeholder: "e.g. Vegetable lasagne, 3 portions", origin: "homemade", dietary: ["vegetarian"], allergens: [], bestBeforeDays: 1 },
+  fruit_veg: { placeholder: "e.g. Bag of apples from our tree", origin: "fresh_produce", dietary: ["vegan", "vegetarian", "gluten_free", "lactose_free", "nut_free"], allergens: [], bestBeforeDays: 3 },
+  bread: { placeholder: "e.g. 4 bread rolls from this morning", origin: "packaged", dietary: ["vegetarian", "vegan"], allergens: ["gluten"], bestBeforeDays: 1 },
+  packaged: { placeholder: "e.g. 2 tins of chickpeas", origin: "packaged", dietary: [], allergens: [], bestBeforeDays: 30 },
+  dairy: { placeholder: "e.g. Natural yoghurt, 500 g", origin: "packaged", dietary: ["vegetarian", "gluten_free"], allergens: ["milk"], bestBeforeDays: 2 },
+  other: { placeholder: "e.g. Box of herbal tea", dietary: [], allergens: [], bestBeforeDays: 7 },
+};
 
 const ALLERGENS = ["gluten", "milk", "eggs", "nuts", "peanuts", "soy", "sesame", "celery", "mustard", "fish"];
 const CHECKS = [
@@ -31,8 +43,14 @@ const chipCls = (on: boolean) =>
 export function ShareFood() {
   const nav = useNavigate();
   const qc = useQueryClient();
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [params] = useSearchParams();
+  const fromId = params.get("from");
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [reusePhotos, setReusePhotos] = useState<string[]>([]);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dietary, setDietary] = useState<DietaryTag[]>([]);
+  const [weight, setWeight] = useState("");
   const [category, setCategory] = useState<Category>("leftovers");
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [bestBefore, setBestBefore] = useState(isoDay(addDays(1)));
@@ -41,11 +59,46 @@ export function ShareFood() {
   const [allergens, setAllergens] = useState<string[]>([]);
   const [handoverSpot, setHandoverSpot] = useState("");
   const [checks, setChecks] = useState<Record<string, boolean>>({});
-  const preview = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  const previews = useMemo(() => photos.map((p) => URL.createObjectURL(p)), [photos]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
+  const shownPhotos = previews.length ? previews : reusePhotos;
+
+  // "Post again": copy fields and photos from one of my earlier listings, with fresh dates.
+  const fromQ = useQuery({ queryKey: ["listing", fromId, "repost"], queryFn: () => fetchListing(fromId!), enabled: !!fromId });
+  useEffect(() => {
+    const l = fromQ.data;
+    if (!l || !l.isMine) return;
+    setTitle(l.title);
+    setDescription(l.description ?? "");
+    setCategory(l.category);
+    setOrigin(l.origin);
+    setPortions(l.portions);
+    setAllergens(l.allergens);
+    setDietary(l.dietaryTags ?? []);
+    setWeight(l.weightKg ? String(l.weightKg) : "");
+    setHandoverSpot(l.handoverSpot ?? "");
+    setReusePhotos(l.photos?.length ? l.photos : [l.photoUrl]);
+    setBestBefore(isoDay(addDays(TEMPLATES[l.category].bestBeforeDays)));
+  }, [fromQ.data]);
+
+  const applyTemplate = (c: Category) => {
+    setCategory(c);
+    const t = TEMPLATES[c];
+    if (t.origin) setOrigin(t.origin);
+    setDietary(t.dietary);
+    setAllergens(t.allergens);
+    setBestBefore(isoDay(addDays(t.origin === "homemade" ? Math.min(t.bestBeforeDays, 2) : t.bestBeforeDays)));
+    setWindowIdx(2);
+  };
+  const addPhotos = (files: FileList | null) => {
+    if (!files) return;
+    setPhotos((ps) => [...ps, ...Array.from(files)].slice(0, MAX_PHOTOS));
+  };
 
   const maxDate = origin === "homemade" ? isoDay(addDays(2)) : undefined;
   const allTicked = CHECKS.every((c) => checks[c.key]);
-  const ready = !!photo && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
+  const hasPhoto = photos.length > 0 || reusePhotos.length > 0;
+  const ready = hasPhoto && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
 
   const m = useMutation({
     mutationFn: () => {
@@ -53,13 +106,18 @@ export function ShareFood() {
       const w = WINDOWS[windowIdx];
       let until = new Date(now.getTime() + w.hours * 3600_000);
       if (w.hours === -1) {
+        // Until 20:00 today, or 20:00 tomorrow when it's already past 18:00.
         until = new Date(now);
         until.setHours(20, 0, 0, 0);
-        if (until <= now) until = new Date(now.getTime() + 2 * 3600_000);
+        if (now.getHours() >= 18) until.setDate(until.getDate() + 1);
       }
       const f = new FormData();
-      f.set("photo", photo!);
+      for (const p of photos) f.append("photos", p);
+      if (!photos.length && fromId) f.set("fromListingId", fromId);
       f.set("title", title.trim());
+      if (description.trim()) f.set("description", description.trim());
+      if (dietary.length) f.set("dietaryTags", dietary.join(","));
+      if (weight) f.set("weightKg", weight);
       f.set("category", category);
       f.set("origin", origin!);
       f.set("bestBefore", new Date(`${bestBefore}T23:59:00`).toISOString());
@@ -74,6 +132,7 @@ export function ShareFood() {
     onSuccess: (l) => {
       qc.invalidateQueries({ queryKey: ["listings"] });
       qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["my-listings"] });
       nav(`/map?listing=${l.id}`, { replace: true });
     },
   });
@@ -84,42 +143,63 @@ export function ShareFood() {
   };
 
   return (
-    <Page title="Share food">
+    <Page title={fromId ? "Post again" : "Share food"}>
       <p className="mb-4 rounded-xl bg-brand-light p-3 text-sm text-brand-dark">
-        Share in 30 seconds. Photo and date help neighbours trust your food.
+        {fromId
+          ? "We copied your earlier listing with fresh dates. Check it and post."
+          : "Share in 30 seconds. Pick a category and we fill in the usual details for you."}
       </p>
       <form onSubmit={submit} className="space-y-5">
-        <label className="block cursor-pointer">
-          <span className={labelCls}>Photo (required)</span>
-          <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-stone-300 bg-white">
-            {preview ? (
-              <img src={preview} alt="Your food" className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-center text-stone-500">
-                <span className="block text-4xl">📷</span>
-                Take or choose a photo
-              </span>
-            )}
-          </div>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        <div>
+          <span className={labelCls}>Photos (at least 1, up to {MAX_PHOTOS})</span>
+          {shownPhotos.length > 0 ? (
+            <div className="grid grid-cols-4 gap-2">
+              {shownPhotos.map((src, i) => (
+                <div key={src} className="relative aspect-square overflow-hidden rounded-xl bg-stone-100">
+                  <img src={src} alt={i === 0 ? "Main photo" : `Photo ${i + 1}`} className="h-full w-full object-cover" />
+                  {previews.length > 0 && (
+                    <button
+                      type="button"
+                      aria-label={`Remove photo ${i + 1}`}
+                      onClick={() => setPhotos((ps) => ps.filter((_, j) => j !== i))}
+                      className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {previews.length > 0 && previews.length < MAX_PHOTOS && (
+                <label className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-stone-300 bg-white text-2xl text-stone-500">
+                  +
+                  <input type="file" accept="image/*" multiple className="sr-only" aria-label="Add another photo" onChange={(e) => addPhotos(e.target.files)} />
+                </label>
+              )}
+            </div>
+          ) : null}
+          {(shownPhotos.length === 0 || reusePhotos.length > 0 && previews.length === 0) && (
+            <label className="mt-2 block cursor-pointer">
+              <div className={`flex items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-stone-300 bg-white ${shownPhotos.length ? "py-3" : "aspect-[4/3]"}`}>
+                <span className="text-center text-stone-500">
+                  {!shownPhotos.length && <span className="block text-4xl">📷</span>}
+                  {shownPhotos.length ? "Use new photos instead" : "Take or choose photos"}
+                </span>
+              </div>
+              <input type="file" accept="image/*" capture="environment" multiple className="sr-only" aria-label="Photo" onChange={(e) => addPhotos(e.target.files)} />
+            </label>
+          )}
+        </div>
 
         <div>
           <label className={labelCls} htmlFor="title">What is it?</label>
-          <input id="title" className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Vegetable lasagne, 3 portions" maxLength={80} />
+          <input id="title" className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={TEMPLATES[category].placeholder} maxLength={80} />
         </div>
 
         <fieldset>
           <legend className={labelCls}>Category</legend>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(CATEGORY) as Category[]).map((c) => (
-              <button type="button" key={c} className={chipCls(category === c)} onClick={() => setCategory(c)} aria-pressed={category === c}>
+              <button type="button" key={c} className={chipCls(category === c)} onClick={() => applyTemplate(c)} aria-pressed={category === c}>
                 {CATEGORY[c].emoji} {CATEGORY[c].label}
               </button>
             ))}
@@ -179,9 +259,28 @@ export function ShareFood() {
           </div>
         </fieldset>
 
-        <details className="rounded-xl bg-white p-3 ring-1 ring-stone-200">
-          <summary className="cursor-pointer text-sm font-semibold text-stone-700">Allergens and handover spot (optional)</summary>
-          <div className="mt-3 flex flex-wrap gap-2">
+        <fieldset>
+          <legend className={labelCls}>Dietary</legend>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(DIETARY) as DietaryTag[]).map((d) => {
+              const on = dietary.includes(d);
+              return (
+                <button type="button" key={d} className={chipCls(on)} aria-pressed={on} onClick={() => setDietary((xs) => (on ? xs.filter((x) => x !== d) : [...xs, d]))}>
+                  {DIETARY[d]}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <details className="rounded-xl bg-white p-3 ring-1 ring-stone-200" open={!!fromId}>
+          <summary className="cursor-pointer text-sm font-semibold text-stone-700">Description, allergens, weight and handover spot (optional)</summary>
+          <label className={`${labelCls} mt-3`} htmlFor="desc">Description</label>
+          <textarea id="desc" rows={2} maxLength={500} className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Anything neighbours should know: ingredients, how it was stored…" />
+          <label className={`${labelCls} mt-3`} htmlFor="weight">About how much does it weigh? (kg)</label>
+          <input id="weight" type="number" inputMode="decimal" min={0.05} max={50} step={0.1} className={inputCls} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 0.8" />
+          <span className={`${labelCls} mt-3`}>Allergens</span>
+          <div className="flex flex-wrap gap-2">
             {ALLERGENS.map((a) => {
               const on = allergens.includes(a);
               return (

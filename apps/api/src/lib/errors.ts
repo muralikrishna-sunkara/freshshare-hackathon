@@ -21,8 +21,12 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
   if (err instanceof multer.MulterError) {
     const tooBig = err.code === "LIMIT_FILE_SIZE";
+    const tooMany = err.code === "LIMIT_FILE_COUNT" || err.code === "LIMIT_UNEXPECTED_FILE";
     res.status(tooBig ? 413 : 400).json({
-      error: { code: tooBig ? "photo_too_large" : "upload_error", message: tooBig ? "Photos can be up to 5 MB" : err.message },
+      error: {
+        code: tooBig ? "photo_too_large" : tooMany ? "too_many_photos" : "upload_error",
+        message: tooBig ? "Photos can be up to 8 MB each" : tooMany ? "You can add up to 4 photos" : err.message,
+      },
     });
     return;
   }

@@ -1,5 +1,6 @@
 export type Category = "leftovers" | "fruit_veg" | "bread" | "packaged" | "dairy" | "other";
 export type Origin = "homemade" | "packaged" | "fresh_produce";
+export type DietaryTag = "vegetarian" | "vegan" | "gluten_free" | "lactose_free" | "halal" | "kosher" | "nut_free";
 
 export interface Giver {
   id: string;
@@ -18,6 +19,10 @@ export interface Listing {
   allergens: string[];
   bestBefore: string;
   photoUrl: string;
+  photos: string[];
+  dietaryTags: DietaryTag[];
+  weightKg: number | null;
+  areaLabel: string | null;
   publicLat: number;
   publicLng: number;
   pickupFrom: string;
@@ -46,9 +51,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export const fetchNearby = (lat: number, lng: number, radius: number, category?: Category) => {
+export const fetchNearby = (lat: number, lng: number, radius: number, category?: Category, diet?: DietaryTag) => {
   const q = new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) });
   if (category) q.set("category", category);
+  if (diet) q.set("diet", diet);
   return api<{ listings: Listing[] }>(`/listings?${q}`).then((r) => r.listings);
 };
 
@@ -115,7 +121,7 @@ export const register = (b: {
 
 export const logout = () => fetch("/api/auth/logout", { method: "POST", credentials: "include" });
 
-export type ClaimStatus = "pending" | "confirmed" | "collected" | "cancelled" | "lapsed";
+export type ClaimStatus = "pending" | "confirmed" | "collected" | "cancelled" | "lapsed" | "declined";
 
 export interface ListingDetail extends Listing {
   isMine: boolean;
@@ -138,7 +144,7 @@ export interface Claim {
 export const reserveListing = (id: string) => api<{ claim: Claim }>(`/listings/${id}/claims`, { method: "POST" }).then((r) => r.claim);
 export const fetchClaim = (id: string) => api<{ claim: Claim }>(`/claims/${id}`).then((r) => r.claim);
 export const fetchMyClaims = () => api<{ asReceiver: Claim[]; asGiver: Claim[] }>("/claims");
-export const claimAction = (id: string, action: "confirm" | "collected" | "cancel") =>
+export const claimAction = (id: string, action: "confirm" | "collected" | "cancel" | "decline") =>
   api<{ claim: Claim }>(`/claims/${id}/${action}`, { method: "POST" }).then((r) => r.claim);
 
 export const createListing = (form: FormData) => api<{ listing: Listing }>("/listings", { method: "POST", body: form }).then((r) => r.listing);
@@ -202,3 +208,12 @@ export interface ImpactTotals {
   organizations: number;
 }
 export const fetchImpactTotals = () => api<ImpactTotals>("/impact/totals");
+
+export type ReportReason = "unsafe_food" | "prohibited_item" | "spam" | "no_show" | "harassment" | "other";
+export const report = (b: { listingId?: string; userId?: string; reason: ReportReason; note?: string }) =>
+  api<{ ok: true; message: string }>("/reports", json(b));
+
+export interface MyListing extends Listing {
+  handoverSpot: string | null;
+}
+export const fetchMyListings = () => api<{ listings: MyListing[] }>("/listings/mine/all").then((r) => r.listings);

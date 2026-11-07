@@ -28,6 +28,7 @@ function statusLine(c: Claim): { text: string; tone: string } {
     collected: { text: "Collected · thank you for saving food!", tone: "bg-brand-light text-brand-dark" },
     cancelled: { text: "Cancelled", tone: "bg-stone-100 text-stone-600" },
     lapsed: { text: "The 30-minute hold ran out", tone: "bg-stone-100 text-stone-600" },
+    declined: { text: c.role === "receiver" ? `${giver} couldn't make this one work` : "You declined this request", tone: "bg-stone-100 text-stone-600" },
   };
   return s[c.status];
 }
@@ -37,7 +38,7 @@ export function ClaimPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["claim", id], queryFn: () => fetchClaim(id), refetchInterval: 5000 });
   const act = useMutation({
-    mutationFn: (a: "confirm" | "collected" | "cancel") => claimAction(id, a),
+    mutationFn: (a: "confirm" | "collected" | "cancel" | "decline") => claimAction(id, a),
     onSuccess: (c) => {
       qc.setQueryData(["claim", id], c);
       qc.invalidateQueries({ queryKey: ["claims"] });
@@ -100,16 +101,25 @@ export function ClaimPage() {
 
         <ErrorNote error={act.error} />
         {c.role === "giver" && c.status === "pending" && (
-          <button className={primaryBtn} onClick={() => act.mutate("confirm")} disabled={act.isPending}>
-            Confirm pickup
-          </button>
+          <>
+            <button className={primaryBtn} onClick={() => act.mutate("confirm")} disabled={act.isPending}>
+              Confirm pickup
+            </button>
+            <button
+              className="w-full min-h-[48px] rounded-full text-sm font-semibold text-stone-700 ring-1 ring-stone-300"
+              onClick={() => act.mutate("decline")}
+              disabled={act.isPending}
+            >
+              Decline
+            </button>
+          </>
         )}
         {c.status === "confirmed" && (
           <button className={primaryBtn} onClick={() => act.mutate("collected")} disabled={act.isPending}>
             Mark collected
           </button>
         )}
-        {active && (
+        {active && !(c.role === "giver" && c.status === "pending") && (
           <button className="w-full min-h-[48px] rounded-full text-sm font-semibold text-stone-600 ring-1 ring-stone-300" onClick={() => act.mutate("cancel")} disabled={act.isPending}>
             Cancel pickup
           </button>
