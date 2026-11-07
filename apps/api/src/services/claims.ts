@@ -47,7 +47,7 @@ export async function reserve(listingId: string, receiverId: string) {
       where: { id: listingId, status: "available", bestBefore: { gt: new Date() } },
       data: { status: "reserved" },
     });
-    if (flipped.count === 0) throw new HttpError(409, "not_available", "Someone else has already reserved this");
+    if (flipped.count === 0) throw new HttpError(409, "not_available", "Someone else was quicker. This food has just been reserved.");
     return tx.claim.create({
       data: { listingId, receiverId, holdUntil: new Date(Date.now() + HOLD_MINUTES * 60_000) },
       include: claimInclude,
@@ -55,13 +55,20 @@ export async function reserve(listingId: string, receiverId: string) {
   });
 }
 
-export async function transition(id: string, viewerId: string, action: "confirm" | "collected" | "cancel") {
+export async function transition(id: string, viewerId: string, action: "confirm" | "collected" | "cancel" | "decline") {
   const c = await loadClaim(id, viewerId);
   if (action === "confirm") {
     if (c.role !== "giver") throw new HttpError(403, "forbidden", "Only the giver can confirm");
     if (c.status !== "pending") throw new HttpError(409, "bad_state", `This pickup is already ${c.status}`);
     if (c.holdUntil < new Date()) throw new HttpError(409, "hold_lapsed", "The 30-minute hold has run out");
     await prisma.claim.update({ where: { id }, data: { status: "confirmed" } });
+  } else if (action === "decline") {
+    if (c.role !== "giver") throw new HttpError(403, "forbidden", "Only the giver can decline");
+    if (c.status !== "pending") throw new HttpError(409, "bad_state", `This pickup is already ${c.status}`);
+    await prisma.$transaction([
+      prisma.claim.update({ where: { id }, data: { status: "declined" } }),
+      prisma.listing.updateMany({ where: { id: c.listingId, status: "reserved" }, data: { status: "available" } }),
+    ]);
   } else if (action === "collected") {
     if (c.status !== "confirmed") throw new HttpError(409, "bad_state", "The giver has to confirm before pickup");
     await prisma.$transaction([

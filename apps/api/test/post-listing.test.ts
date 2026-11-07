@@ -60,7 +60,7 @@ describe("POST /api/listings", () => {
     const out = await toWebp(input);
     const meta = await sharp(out).metadata();
     expect(meta.format).toBe("webp");
-    expect(meta.width).toBe(1024);
+    expect(meta.width).toBe(1600);
     expect(meta.exif).toBeUndefined();
   });
 
@@ -110,10 +110,10 @@ describe("POST /api/listings", () => {
     expect(res.body.error.code).toBe("unsupported_type");
   });
 
-  it("rejects photos over 5 MB with 413", async () => {
+  it("rejects photos over 8 MB with 413", async () => {
     let r = anna.post("/api/listings");
     for (const [k, v] of Object.entries(valid())) r = r.field(k, v);
-    const res = await r.attach("photo", Buffer.alloc(5 * 1024 * 1024 + 10), { filename: "big.jpg", contentType: "image/jpeg" });
+    const res = await r.attach("photo", Buffer.alloc(8 * 1024 * 1024 + 10), { filename: "big.jpg", contentType: "image/jpeg" });
     expect(res.status).toBe(413);
     expect(res.body.error.code).toBe("photo_too_large");
   });

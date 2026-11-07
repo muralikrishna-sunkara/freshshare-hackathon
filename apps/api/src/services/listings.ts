@@ -1,5 +1,6 @@
 import { Prisma, type Category } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { areaLabel } from "../lib/geocode.js";
 import { roundDistance } from "../lib/geo.js";
 
 type GiverRow = { id: string; name: string; emailVerified: boolean; phoneVerified: boolean; ratingAvg: number; ratingCount: number };
@@ -26,6 +27,10 @@ export function publicListing(
     allergens: l.allergens,
     bestBefore: l.bestBefore,
     photoUrl: l.photoUrl,
+    photos: l.photos.length ? l.photos : [l.photoUrl],
+    dietaryTags: l.dietaryTags,
+    weightKg: l.weightKg,
+    areaLabel: areaLabel(l),
     publicLat: l.publicLat,
     publicLng: l.publicLng,
     pickupFrom: l.pickupFrom,
@@ -39,7 +44,7 @@ export function publicListing(
   };
 }
 
-export async function findNearby(lat: number, lng: number, radius: number, category?: Category) {
+export async function findNearby(lat: number, lng: number, radius: number, category?: Category, diet?: string) {
   const latD = radius / 111320;
   const lngD = radius / (111320 * Math.cos((lat * Math.PI) / 180));
   const rows = await prisma.$queryRaw<{ id: string; distance_m: number }[]>`
@@ -55,6 +60,7 @@ export async function findNearby(lat: number, lng: number, radius: number, categ
         AND lat BETWEEN ${lat - latD} AND ${lat + latD}
         AND lng BETWEEN ${lng - lngD} AND ${lng + lngD}
         ${category ? Prisma.sql`AND category = ${category}::"Category"` : Prisma.empty}
+        ${diet ? Prisma.sql`AND ${diet} = ANY("dietaryTags")` : Prisma.empty}
     ) t
     WHERE distance_m <= ${radius}
     ORDER BY distance_m

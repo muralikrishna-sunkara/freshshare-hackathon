@@ -13,6 +13,9 @@ const schema = z.object({
   AWS_REGION: z.string().default("eu-central-1"),
   SNS_NOTIFICATIONS_ARN: z.string().optional(),
   LOG_LEVEL: z.string().default("info"),
+  // Photon reverse geocoding for the public "91054 Altstadt" area label. "off" in tests.
+  GEOCODER: z.enum(["photon", "off"]).default(process.env.NODE_ENV === "test" ? "off" : "photon"),
+  PHOTON_URL: z.string().default("https://photon.komoot.io"),
 });
 
 export type Env = z.infer<typeof schema>;

@@ -27,7 +27,7 @@ claims.get(
   }),
 );
 
-for (const action of ["confirm", "collected", "cancel"] as const) {
+for (const action of ["confirm", "collected", "cancel", "decline"] as const) {
   claims.post(
     `/:id/${action}`,
     ah(async (req, res) => {
@@ -78,8 +78,42 @@ claims.post(
     const { body } = messageBody.parse(req.body);
     const me = userId(req);
     const c = await loadClaim(id, me);
-    if (c.status === "cancelled" || c.status === "lapsed") throw new HttpError(409, "closed", "This pickup is closed");
+    if (c.status === "cancelled" || c.status === "lapsed" || c.status === "declined") throw new HttpError(409, "closed", "This pickup is closed");
     const message = await prisma.message.create({ data: { claimId: id, senderId: me, body } });
     res.status(201).json({ message });
+  }),
+);
+
+/**
+ * Live chat over Server-Sent Events. Each open stream checks the database for new messages every
+ * 1.5 s, so it works across several api tasks without a shared broker. Heartbeats keep the ALB connection open.
+ */
+claims.get(
+  "/:id/stream",
+  ah(async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    await loadClaim(id, userId(req)); // only the two parties
+    res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+    res.flushHeaders();
+    let since = messagesQuery.parse(req.query).after ?? new Date();
+    let closed = false;
+    const tick = async () => {
+      if (closed) return;
+      try {
+        const fresh = await prisma.message.findMany({ where: { claimId: id, createdAt: { gt: since } }, orderBy: { createdAt: "asc" }, take: 50 });
+        for (const m of fresh) res.write(`event: message\ndata: ${JSON.stringify(m)}\n\n`);
+        if (fresh.length) since = fresh[fresh.length - 1].createdAt;
+      } catch {
+        /* try again next tick */
+      }
+    };
+    const poll = setInterval(tick, 1500);
+    const beat = setInterval(() => res.write(": ping\n\n"), 15000);
+    res.write("event: ready\ndata: {}\n\n");
+    req.on("close", () => {
+      closed = true;
+      clearInterval(poll);
+      clearInterval(beat);
+    });
   }),
 );

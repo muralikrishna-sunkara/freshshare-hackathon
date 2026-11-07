@@ -6,18 +6,30 @@ import { formatTime } from "../lib/format";
 
 const QUICK = ["On my way", "Running 5 min late", "Can we meet somewhere public?"];
 
-/** Pickup chat, polled every 3 s (REST + polling is enough for the demo). */
+/** Pickup chat. New messages arrive live over Server-Sent Events; polling every 10 s is the fallback. */
 export function Chat({ claim }: { claim: Claim }) {
   const me = useMe();
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const key = ["messages", claim.id];
-  const q = useQuery({ queryKey: key, queryFn: () => fetchMessages(claim.id), refetchInterval: 3000 });
+  const [live, setLive] = useState(false);
+  const q = useQuery({ queryKey: key, queryFn: () => fetchMessages(claim.id), refetchInterval: live ? 10_000 : 3000 });
+  useEffect(() => {
+    if (typeof EventSource === "undefined") return;
+    const es = new EventSource(`/api/claims/${claim.id}/stream`, { withCredentials: true });
+    es.addEventListener("ready", () => setLive(true));
+    es.addEventListener("message", (ev) => {
+      const m = JSON.parse((ev as MessageEvent).data) as Message;
+      qc.setQueryData<Message[]>(["messages", claim.id], (xs = []) => (xs.some((x) => x.id === m.id) ? xs : [...xs, m]));
+    });
+    es.onerror = () => setLive(false);
+    return () => es.close();
+  }, [claim.id, qc]);
   const send = useMutation({
     mutationFn: (body: string) => sendMessage(claim.id, body),
     onSuccess: (m) => {
-      qc.setQueryData<Message[]>(key, (xs = []) => [...xs, m]);
+      qc.setQueryData<Message[]>(key, (xs = []) => (xs.some((x) => x.id === m.id) ? xs : [...xs, m]));
       setText("");
     },
   });
@@ -25,7 +37,7 @@ export function Chat({ claim }: { claim: Claim }) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest" });
   }, [messages.length]);
-  const open = claim.status !== "cancelled" && claim.status !== "lapsed";
+  const open = claim.status !== "cancelled" && claim.status !== "lapsed" && claim.status !== "declined";
   const other = claim.role === "receiver" ? claim.listing.giver.name : claim.receiver.name;
   const submit = (e: FormEvent) => {
     e.preventDefault();

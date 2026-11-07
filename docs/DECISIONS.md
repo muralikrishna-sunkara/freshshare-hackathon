@@ -33,3 +33,10 @@
 - Kit step 1b (SQS, SES, EventBridge on Floci) is skipped: those services aren't in our Terraform; the in-process job stays.
 - Contact address on Imprint/Privacy/Contact is `hello@freshshare.de` (one constant in `apps/web/src/content/site.ts`).
 - The SPA's 404 page renders client-side; Caddy still answers 200 for unknown paths.
+- Listings take up to 4 photos (8 MB each, re-encoded to 1600 px WebP), dietary tags, an optional weight and description. `photoUrl` stays the first photo so older code keeps working.
+- Public area label = Photon reverse geocode of the giver's home pin, keeping only `postcode` + district/city (`areaLabel`). Fails soft (no label) without network; off in tests.
+- Map filters live in the URL (`km`, `category`, `diet`, `fridges`); radii are 1/2/5/10 km per the kit.
+- Live chat uses Server-Sent Events that read new rows from Postgres every 1.5 s, so it works with several api tasks behind the ALB without a broker; polling is the fallback.
+- Givers can decline a pending request (`declined`), which frees the listing. The losing reserve says "Someone else was quicker".
+- "Post again" (on My pickups and on your own listing) copies fields and photos into the share form with fresh dates.
+- Reports (listing or person, reason list from the kit plus harassment) go to an admin queue; repeats of an open report are ignored.
