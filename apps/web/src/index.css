@@ -4,3 +4,9 @@
 
 html, body, #root { height: 100%; }
 .leaflet-container { font: inherit; }
+
+/* Basil & Honey: bold, slightly tight headings */
+h1, h2, h3 { letter-spacing: -0.02em; }
+
+/* Tint OSM tiles a touch toward the misty basil background */
+.leaflet-tile-pane { filter: saturate(0.85) brightness(1.02); }
