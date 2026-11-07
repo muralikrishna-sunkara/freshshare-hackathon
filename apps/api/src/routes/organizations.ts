@@ -5,6 +5,7 @@ import { isAdmin, requireAuth, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { distanceM, roundDistance } from "../lib/geo.js";
 import { prisma } from "../lib/prisma.js";
+import { offerToNext } from "../services/waitlist.js";
 import { notify } from "../services/notify.js";
 import { docUpload, sniffDoc } from "../lib/upload.js";
 import { HOLD_MINUTES } from "../services/claims.js";
@@ -268,7 +269,11 @@ organizations.post(
       const ok = await prisma.$transaction(async (tx) => {
         const l = await tx.listing.findUnique({ where: { id: listingId } });
         if (!l || memberIds.includes(l.giverId)) return false;
-        const flipped = await tx.listing.updateMany({ where: { id: listingId, status: "available", bestBefore: { gt: new Date() } }, data: { status: "reserved" } });
+        const now = new Date();
+        const flipped = await tx.listing.updateMany({
+          where: { id: listingId, status: "available", bestBefore: { gt: now }, OR: [{ reservedForUserId: null }, { reservedUntil: { lt: now } }] },
+          data: { status: "reserved", reservedForUserId: null, reservedUntil: null },
+        });
         if (flipped.count === 0) return false;
         // Givers confirm bulk requests as usual; hold them until the listing's pickup window ends.
         const holdUntil = new Date(Math.max(Date.now() + HOLD_MINUTES * 60_000, l.pickupUntil.getTime()));
@@ -383,6 +388,7 @@ bulkClaims.post(
         prisma.claim.update({ where: { id: i.claimId }, data: { status: "cancelled" } }),
         prisma.listing.updateMany({ where: { id: i.listingId, status: "reserved" }, data: { status: "available" } }),
       ]);
+      await offerToNext(i.listingId);
     }
     await recomputeBulk(id);
     const again = await loadBulk(id, me);

@@ -42,9 +42,20 @@ export const optionalAuth: RequestHandler = (req, _res, next) => {
   next();
 };
 
+export const suspendedError = (reason: string | null) =>
+  new HttpError(403, "suspended", `Your account is suspended${reason ? `: ${reason}` : ""}. Contact us via the contact page if you think this is a mistake.`);
+
+/** Signed-in users only. Suspended accounts (T2.5) are refused on every request, not only at login. */
 export const requireAuth: RequestHandler = (req, _res, next) => {
   if (!req.user) return next(new HttpError(401, "unauthenticated", "Please sign in first"));
-  next();
+  prisma.user
+    .findUnique({ where: { id: req.user.id }, select: { suspendedAt: true, suspendedReason: true } })
+    .then((u) => {
+      if (!u) return next(new HttpError(401, "unauthenticated", "Please sign in first"));
+      if (u.suspendedAt) return next(suspendedError(u.suspendedReason));
+      next();
+    })
+    .catch(next);
 };
 
 export function userId(req: Request): string {

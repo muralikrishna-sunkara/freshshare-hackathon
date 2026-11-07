@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { suspendUser } from "../services/moderation.js";
 import { notify } from "../services/notify.js";
 import { recomputeBulk } from "../services/orgs.js";
 
@@ -103,7 +104,9 @@ admin.post(
   "/reports/:id/resolve",
   ah(async (req, res) => {
     const id = idParam.parse(req.params.id);
-    const { action } = z.object({ action: z.enum(["dismiss", "remove_listing"]).default("dismiss") }).parse(req.body ?? {});
+    const { action, reason } = z
+      .object({ action: z.enum(["dismiss", "remove_listing", "suspend_user"]).default("dismiss"), reason: z.string().trim().max(300).optional() })
+      .parse(req.body ?? {});
     const report = await prisma.report.findUnique({ where: { id } });
     if (!report || report.status !== "open") throw new HttpError(404, "not_found", "No open report with that id");
     const me = userId(req);
@@ -118,10 +121,49 @@ admin.post(
         prisma.report.updateMany({ where: { listingId, status: "open" }, data: done }),
       ]);
       for (const b of new Set(active.map((c) => c.bulkClaimId).filter((x): x is string => !!x))) await recomputeBulk(b);
+    } else if (action === "suspend_user") {
+      if (!reason) throw new HttpError(400, "reason_required", "Write the reason the person will see");
+      const target = report.reportedUserId ?? (report.listingId ? (await prisma.listing.findUnique({ where: { id: report.listingId } }))?.giverId : null);
+      if (!target) throw new HttpError(400, "no_user", "Nobody to suspend for this report");
+      await suspendUser(target, reason);
+      const theirListings = (await prisma.listing.findMany({ where: { giverId: target }, select: { id: true } })).map((l) => l.id);
+      await prisma.report.updateMany({ where: { status: "open", OR: [{ id }, { reportedUserId: target }, { listingId: { in: theirListings } }] }, data: done });
     } else {
       await prisma.report.update({ where: { id }, data: done });
     }
     res.json({ ok: true, action });
+  }),
+);
+
+const suspendBody = z.object({ reason: z.string().trim().min(3, "Write the reason the person will see").max(300) });
+
+/** T2.5: suspend an account (can't sign in, post or reserve; the reason is shown at sign-in). */
+admin.post(
+  "/users/:id/suspend",
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    const { reason } = suspendBody.parse(req.body);
+    if (id === userId(req)) throw new HttpError(400, "self", "You can't suspend yourself");
+    await suspendUser(id, reason);
+    res.json({ ok: true });
+  }),
+);
+
+admin.post(
+  "/users/:id/unsuspend",
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    const r = await prisma.user.updateMany({ where: { id, suspendedAt: { not: null } }, data: { suspendedAt: null, suspendedReason: null } });
+    if (r.count === 0) throw new HttpError(404, "not_found", "No suspended account with that id");
+    res.json({ ok: true });
+  }),
+);
+
+admin.get(
+  "/users/suspended",
+  ah(async (_req, res) => {
+    const rows = await prisma.user.findMany({ where: { suspendedAt: { not: null } }, orderBy: { suspendedAt: "desc" }, select: { id: true, name: true, suspendedAt: true, suspendedReason: true } });
+    res.json({ users: rows });
   }),
 );
 

@@ -10,6 +10,8 @@ import { storage } from "../lib/storage.js";
 import { reverseArea } from "../lib/geocode.js";
 import { MAX_PHOTOS, photoUpload, toWebp } from "../lib/upload.js";
 import { claimView, reserve } from "../services/claims.js";
+import { isBlockedBetween } from "../services/blocks.js";
+import { joinWaitlist, leaveWaitlist, waitlistStatus } from "../services/waitlist.js";
 import { findNearby, publicListing } from "../services/listings.js";
 import { DIETARY_TAGS, isRawMeatOrFish, RAW_MEAT_MESSAGE } from "../services/rules.js";
 
@@ -30,7 +32,7 @@ listings.get(
   "/",
   ah(async (req, res) => {
     const q = nearbyQuery.parse(req.query);
-    res.json({ listings: await findNearby(q.lat, q.lng, q.radius, q.category, q.diet) });
+    res.json({ listings: await findNearby(q.lat, q.lng, q.radius, q.category, q.diet, req.user?.id) });
   }),
 );
 
@@ -174,6 +176,7 @@ listings.get(
     });
     if (!l || l.status === "removed") throw new HttpError(404, "not_found", "Listing not found");
     const viewer = req.user?.id;
+    if (viewer && viewer !== l.giverId && (await isBlockedBetween(viewer, l.giverId))) throw new HttpError(404, "not_found", "Listing not found");
     const myClaim = viewer
       ? l.claims.find((c) => c.receiverId === viewer && c.status !== "cancelled" && c.status !== "lapsed" && c.status !== "declined")
       : undefined;
@@ -184,6 +187,10 @@ listings.get(
         ...publicListing(l),
         isMine: viewer === l.giverId,
         myClaim: myClaim ? { id: myClaim.id, status: myClaim.status } : null,
+        // T2.3: a hold for the first person on the waitlist, and the viewer's place in line.
+        heldUntil: l.reservedForUserId && l.reservedUntil && l.reservedUntil > new Date() ? l.reservedUntil : null,
+        heldForMe: !!viewer && l.reservedForUserId === viewer && !!l.reservedUntil && l.reservedUntil > new Date(),
+        waitlist: await waitlistStatus(l.id, viewer),
         ...(canSeeExact ? { lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot } : {}),
       },
     });
@@ -197,5 +204,26 @@ listings.post(
     const id = z.string().min(1).parse(req.params.id);
     const c = await reserve(id, userId(req));
     res.status(201).json({ claim: claimView(c, "receiver") });
+  }),
+);
+
+/** T2.3: join the waitlist of food someone else has reserved. */
+listings.post(
+  "/:id/waitlist",
+  requireAuth,
+  ah(async (req, res) => {
+    const id = z.string().min(1).parse(req.params.id);
+    await joinWaitlist(id, userId(req));
+    res.status(201).json({ waitlist: await waitlistStatus(id, userId(req)) });
+  }),
+);
+
+listings.delete(
+  "/:id/waitlist",
+  requireAuth,
+  ah(async (req, res) => {
+    const id = z.string().min(1).parse(req.params.id);
+    await leaveWaitlist(id, userId(req));
+    res.json({ waitlist: await waitlistStatus(id, userId(req)) });
   }),
 );

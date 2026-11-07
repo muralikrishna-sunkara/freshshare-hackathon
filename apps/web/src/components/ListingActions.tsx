@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { fetchListing, reserveListing, type Listing } from "../api/client";
+import { ApiError, fetchListing, joinWaitlist, leaveWaitlist, reserveListing, type Listing } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, primaryBtn } from "./Page";
 import { ReportButton } from "./ReportButton";
@@ -18,8 +18,13 @@ export function ListingActions({ listing }: { listing: Listing }) {
       qc.invalidateQueries({ queryKey: ["claims"] });
       nav(`/pickups/${c.id}`);
     },
+    onError: () => qc.invalidateQueries({ queryKey: ["listing", listing.id] }),
   });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["listing", listing.id] });
+  const join = useMutation({ mutationFn: () => joinWaitlist(listing.id), onSuccess: refresh });
+  const leave = useMutation({ mutationFn: () => leaveWaitlist(listing.id), onSuccess: refresh });
   const d = detail.data;
+  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   const firstName = listing.giver.name.split(" ")[0];
 
   if (d?.isMine) {
@@ -43,20 +48,48 @@ export function ListingActions({ listing }: { listing: Listing }) {
       </div>
     );
   }
-  const available = (d?.status ?? listing.status) === "available";
+  const lostRace = reserve.error instanceof ApiError && (reserve.error.code === "not_available" || reserve.error.code === "held_for_waitlist");
+  const heldForOther = !!d?.heldUntil && !d.heldForMe;
+  const available = (d?.status ?? listing.status) === "available" && !heldForOther && !lostRace;
+  const position = d?.waitlist.myPosition;
   return (
     <div className="space-y-2 px-4 pb-6">
-      <ErrorNote error={reserve.error} />
-      {!available ? (
-        <p className="rounded-xl bg-stone-100 p-3 text-center font-semibold text-stone-600">Reserved</p>
-      ) : me.data ? (
-        <button className={primaryBtn} onClick={() => reserve.mutate()} disabled={reserve.isPending}>
-          {reserve.isPending ? "Reserving…" : "Reserve"}
-        </button>
+      <ErrorNote error={reserve.error ?? join.error} />
+      {d?.heldForMe && d.heldUntil && (
+        <p className="rounded-xl bg-accent/15 p-3 text-center text-sm font-semibold text-stone-800" data-testid="held-for-me">
+          You were first on the waitlist: it's held for you until {time(d.heldUntil)}.
+        </p>
+      )}
+      {available ? (
+        me.data ? (
+          <button className={primaryBtn} onClick={() => reserve.mutate()} disabled={reserve.isPending}>
+            {reserve.isPending ? "Reserving…" : "Reserve"}
+          </button>
+        ) : (
+          <Link to={`/signin?next=${encodeURIComponent(`/map?listing=${listing.id}`)}`} className={`${primaryBtn} flex items-center justify-center`}>
+            Sign in to reserve
+          </Link>
+        )
       ) : (
-        <Link to={`/signin?next=${encodeURIComponent(`/map?listing=${listing.id}`)}`} className={`${primaryBtn} flex items-center justify-center`}>
-          Sign in to reserve
-        </Link>
+        <div className="space-y-2 rounded-xl bg-stone-100 p-3 text-center" data-testid="waitlist-box">
+          <p className="font-semibold text-stone-700">
+            {heldForOther ? `Offered to the next person on the waitlist until ${time(d!.heldUntil!)}` : "Reserved by someone else"}
+          </p>
+          {position ? (
+            <>
+              <p className="text-sm text-stone-700">You're <strong>#{position}</strong> on the waitlist. If the pickup falls through, you get it first for 30 minutes.</p>
+              <button type="button" onClick={() => leave.mutate()} disabled={leave.isPending} className="text-sm font-semibold text-stone-600 underline">
+                Leave waitlist
+              </button>
+            </>
+          ) : me.data ? (
+            <button type="button" onClick={() => { reserve.reset(); join.mutate(); }} disabled={join.isPending} className={primaryBtn}>
+              {join.isPending ? "Joining…" : `Join waitlist${d?.waitlist.count ? ` (${d.waitlist.count} waiting)` : ""}`}
+            </button>
+          ) : (
+            <Link to={`/signin?next=${encodeURIComponent(`/listings/${listing.id}`)}`} className="text-sm font-semibold text-brand-dark underline">Sign in to join the waitlist</Link>
+          )}
+        </div>
       )}
       <p className="text-center text-sm text-stone-600">
         You'll get the exact address once {firstName} confirms. Meet in a public place if you prefer.

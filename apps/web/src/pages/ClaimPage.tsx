@@ -8,6 +8,7 @@ import { GiverRow } from "../components/GiverRow";
 import { ListingCard } from "../components/ListingCard";
 import { RateForm } from "../components/RateForm";
 import { ErrorNote, Page, primaryBtn } from "../components/Page";
+import { EnterPickupCode, ShowPickupCode } from "../components/PickupCode";
 import { formatTime } from "../lib/format";
 
 const exactIcon = L.divIcon({
@@ -61,6 +62,10 @@ export function ClaimPage() {
       <div className="space-y-4">
         <p className={`rounded-xl p-3 text-sm font-semibold ${st.tone}`} role="status">{st.text}</p>
         {c.status === "collected" && <RateForm claim={c} />}
+        {c.status === "confirmed" && c.role === "receiver" && <ShowPickupCode claim={c} />}
+        {c.status === "confirmed" && c.role === "giver" && (
+          <EnterPickupCode claim={c} onCollected={(n) => { qc.setQueryData(["claim", id], n); qc.invalidateQueries({ queryKey: ["listings"] }); }} />
+        )}
 
         <div className="overflow-hidden rounded-2xl ring-1 ring-stone-200">
           <ListingCard listing={l} compact />
@@ -115,8 +120,8 @@ export function ClaimPage() {
           </>
         )}
         {c.status === "confirmed" && (
-          <button className={primaryBtn} onClick={() => act.mutate("collected")} disabled={act.isPending}>
-            Mark collected
+          <button className="w-full min-h-[48px] rounded-full text-sm font-semibold text-brand-dark ring-1 ring-stone-300" onClick={() => act.mutate("collected")} disabled={act.isPending}>
+            {c.role === "giver" ? "Mark collected without a code" : "Mark collected"}
           </button>
         )}
         {active && !(c.role === "giver" && c.status === "pending") && (

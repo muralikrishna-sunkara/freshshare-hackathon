@@ -4,7 +4,8 @@ import { requireAuth, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { notify } from "../services/notify.js";
-import { claimView, loadClaim, myClaims, transition } from "../services/claims.js";
+import { claimView, loadClaim, myClaims, transition, verifyPickupCode } from "../services/claims.js";
+import { isBlockedBetween } from "../services/blocks.js";
 import { rateClaim } from "../services/ratings.js";
 
 export const claims = Router();
@@ -39,6 +40,19 @@ for (const action of ["confirm", "collected", "cancel", "decline"] as const) {
   );
 }
 
+const codeBody = z.object({ code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code") });
+
+/** T2.6: giver enters or scans the receiver's pickup code to complete the handover. */
+claims.post(
+  "/:id/verify",
+  ah(async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    const { code } = codeBody.parse(req.body);
+    const c = await verifyPickupCode(id, userId(req), code);
+    res.json({ claim: claimView(c, c.role) });
+  }),
+);
+
 const ratingBody = z.object({
   stars: z.number().int().min(1, "Pick 1 to 5 stars").max(5, "Pick 1 to 5 stars"),
   note: z.string().trim().max(300).optional().transform((v) => (v ? v : null)),
@@ -62,7 +76,8 @@ claims.get(
   ah(async (req, res) => {
     const { id } = idParam.parse(req.params);
     const { after } = messagesQuery.parse(req.query);
-    await loadClaim(id, userId(req)); // 403 for anyone but the two parties
+    const c = await loadClaim(id, userId(req)); // 403 for anyone but the two parties
+    if (await isBlockedBetween(c.receiverId, c.listing.giverId)) throw new HttpError(403, "blocked", "This chat is hidden because one of you blocked the other");
     const messages = await prisma.message.findMany({
       where: { claimId: id, ...(after ? { createdAt: { gt: after } } : {}) },
       orderBy: { createdAt: "asc" },
@@ -80,6 +95,7 @@ claims.post(
     const me = userId(req);
     const c = await loadClaim(id, me);
     if (c.status === "cancelled" || c.status === "lapsed" || c.status === "declined") throw new HttpError(409, "closed", "This pickup is closed");
+    if (await isBlockedBetween(c.receiverId, c.listing.giverId)) throw new HttpError(403, "blocked", "You can't message this person");
     const message = await prisma.message.create({ data: { claimId: id, senderId: me, body } });
     const sender = c.role === "giver" ? c.listing.giver : c.receiver;
     await notify(c.role === "giver" ? c.receiverId : c.listing.giverId, {
