@@ -8,21 +8,28 @@ import { FridgeSheet } from "../components/FridgeSheet";
 import { ListingActions } from "../components/ListingActions";
 import { ListingCard } from "../components/ListingCard";
 import { ListingMap } from "../components/ListingMap";
+import { ListingRow } from "../components/ListingRow";
 import { SidePanel } from "../components/SidePanel";
 import { useLocation } from "../hooks/useLocation";
 import { useIsDesktop } from "../hooks/useMediaQuery";
 import { useMe } from "../hooks/useMe";
-import { CATEGORY, DIETARY, formatDistance } from "../lib/format";
+import { CATEGORY, DIETARY, FILL, formatDistance } from "../lib/format";
 
 const RADII = [1000, 2000, 5000, 10000] as const;
 const chipBase = "shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition min-h-[40px]";
 const chipOn = "bg-brand-dark text-white";
 const chipOff = "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50";
 
+type SortKey = "nearest" | "soonest" | "newest";
+const SORTS: Record<SortKey, { label: string; compare: (a: Listing, b: Listing) => number }> = {
+  nearest: { label: "Nearest first", compare: (a, b) => (a.distanceM ?? 0) - (b.distanceM ?? 0) },
+  soonest: { label: "Pickup ends soonest", compare: (a, b) => +new Date(a.pickupUntil) - +new Date(b.pickupUntil) },
+  newest: { label: "Newest first", compare: (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt) },
+};
+
 export function MapHome() {
   const loc = useLocation();
   const isDesktop = useIsDesktop();
-  const [view, setView] = useState<"map" | "list">("map");
   const [selected, setSelected] = useState<Listing | null>(null);
   const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
   const [params, setParams] = useSearchParams();
@@ -46,6 +53,11 @@ export function MapHome() {
   const setCategory = (c: Category | undefined) => setFilter("category", c);
   const setDiet = (d: DietaryTag | undefined) => setFilter("diet", d);
   const setShowFridges = (f: (v: boolean) => boolean) => setFilter("fridges", f(showFridges) ? undefined : "0");
+  // Map or list view, and the list's sort order, are in the URL too (?view=list&sort=soonest).
+  const view: "map" | "list" = params.get("view") === "list" ? "list" : "map";
+  const setView = (v: "map" | "list") => setFilter("view", v === "list" ? "list" : undefined);
+  const sortParam = params.get("sort");
+  const sort: SortKey = sortParam === "soonest" || sortParam === "newest" ? sortParam : "nearest";
   const focusId = params.get("listing");
   const me = useMe();
 
@@ -81,6 +93,7 @@ export function MapHome() {
     refetchInterval: 30_000,
   });
   const listings = listingsQ.data ?? [];
+  const sorted = [...listings].sort(SORTS[sort].compare);
   const fridges = fridgesQ.data ?? [];
   const radiusLabel = formatDistance(radius);
   const countLabel = listingsQ.isLoading
@@ -136,6 +149,65 @@ export function MapHome() {
           <option key={d} value={d}>{DIETARY[d]}</option>
         ))}
       </select>
+    </div>
+  );
+
+  const viewToggle = (
+    <div className="flex shrink-0 rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist" aria-label="View">
+      {(["map", "list"] as const).map((v) => (
+        <button
+          key={v}
+          role="tab"
+          aria-selected={view === v}
+          onClick={() => setView(v)}
+          className={`min-h-[36px] rounded-full px-4 ${view === v ? "bg-white text-stone-900 shadow" : "text-stone-500 hover:text-stone-800"}`}
+        >
+          {v === "map" ? "🗺 Map" : "☰ List"}
+        </button>
+      ))}
+    </div>
+  );
+
+  const sortSelect = (
+    <label className="flex items-center gap-2 text-sm text-stone-600">
+      Sort
+      <select value={sort} onChange={(e) => setFilter("sort", e.target.value === "nearest" ? undefined : e.target.value)} className="min-h-[40px] rounded-full bg-white px-3 font-semibold text-stone-800 ring-1 ring-stone-300">
+        {(Object.keys(SORTS) as SortKey[]).map((k) => (
+          <option key={k} value={k}>{SORTS[k].label}</option>
+        ))}
+      </select>
+    </label>
+  );
+
+  const detailedList = (
+    <div className="space-y-4">
+      {listingsQ.isLoading && Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 animate-pulse rounded-2xl bg-stone-200" />)}
+      {sorted.map((l) => (
+        <div key={l.id} className={selected?.id === l.id ? "rounded-2xl ring-2 ring-brand" : ""}>
+          <ListingRow listing={l} onOpen={() => openListing(l)} />
+        </div>
+      ))}
+      {showFridges && fridges.length > 0 && !listingsQ.isLoading && (
+        <section aria-label="Community fridges nearby" className="pt-2">
+          <h2 className="mb-2 font-bold">Community fridges nearby ({fridges.length})</h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {fridges.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => openFridge(f)} className="flex w-full gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 ring-stone-200 hover:ring-brand">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-light text-2xl" aria-hidden>🧊</span>
+                  <span className="min-w-0 text-sm">
+                    <span className="block truncate font-bold">{f.name}</span>
+                    <span className="block text-stone-600">{formatDistance(f.distanceM)} away · {f.openingHours}</span>
+                    <span className="block text-stone-500">
+                      {f.lastCheckIn?.fillLevel ? `Last check-in: ${FILL[f.lastCheckIn.fillLevel].label}` : f.lastCheckIn ? `Last check-in: ${f.lastCheckIn.state}` : "No check-ins yet"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 
@@ -214,20 +286,41 @@ export function MapHome() {
         <div className="flex min-h-0 flex-1">
           <aside className="flex w-[420px] shrink-0 flex-col border-r border-stone-200 bg-white">
             <div className="space-y-3 border-b border-stone-200 p-5">
-              <h1 className="text-2xl font-bold">Free food near you</h1>
+              <div className="flex items-center justify-between gap-3">
+                <h1 className="text-2xl font-bold">Free food near you</h1>
+                {viewToggle}
+              </div>
               {impactBanner}
               {filters}
               {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
-              <p className="mb-3 text-sm font-semibold text-stone-600">{countLabel}</p>
-              {errorNote}
-              {emptyState}
-              {list}
-            </div>
+            {view === "map" ? (
+              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+                <p className="mb-3 text-sm font-semibold text-stone-600">{countLabel}</p>
+                {errorNote}
+                {emptyState}
+                {list}
+              </div>
+            ) : (
+              <p className="p-5 text-sm text-stone-500">List view shows every detail. Click a listing to reserve it, or switch back to the map.</p>
+            )}
           </aside>
           <main className="relative min-w-0 flex-1">
-            {map}
+            {view === "map" ? (
+              map
+            ) : (
+              <div className="h-full overflow-y-auto">
+                <div className="mx-auto max-w-4xl space-y-4 p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-semibold text-stone-700">{countLabel}</p>
+                    {sortSelect}
+                  </div>
+                  {errorNote}
+                  {emptyState}
+                  {detailedList}
+                </div>
+              </div>
+            )}
             <Panel open={!!selected} onClose={closeListing} label="Listing details">{listingDetail}</Panel>
             <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label="Community fridge">{fridgeDetail}</Panel>
           </main>
@@ -237,30 +330,29 @@ export function MapHome() {
           <div className="z-[1000] space-y-2 bg-white px-4 pb-3 pt-2 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-stone-700">{countLabel}</p>
-              <div className="flex rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist">
-                {(["map", "list"] as const).map((v) => (
-                  <button
-                    key={v}
-                    role="tab"
-                    aria-selected={view === v}
-                    onClick={() => setView(v)}
-                    className={`min-h-[36px] rounded-full px-3 capitalize ${view === v ? "bg-white text-stone-900 shadow" : "text-stone-500"}`}
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
+              {viewToggle}
             </div>
             {impactBanner}
             {filters}
             {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
           </div>
           <main className="relative min-h-0 flex-1">
-            {view === "map" ? map : <div className="h-full overflow-y-auto p-4">{list}</div>}
-            <div className="absolute inset-x-4 top-4 z-[1000] space-y-2">
-              {errorNote}
-              {emptyState}
-            </div>
+            {view === "map" ? (
+              <>
+                {map}
+                <div className="absolute inset-x-4 top-4 z-[1000] space-y-2">
+                  {errorNote}
+                  {emptyState}
+                </div>
+              </>
+            ) : (
+              <div className="h-full space-y-3 overflow-y-auto p-4">
+                <div className="flex justify-end">{sortSelect}</div>
+                {errorNote}
+                {emptyState}
+                {detailedList}
+              </div>
+            )}
           </main>
           <BottomSheet open={!!selected} onClose={closeListing}>{listingDetail}</BottomSheet>
           <BottomSheet open={!!selectedFridge} onClose={() => setSelectedFridge(null)}>{fridgeDetail}</BottomSheet>

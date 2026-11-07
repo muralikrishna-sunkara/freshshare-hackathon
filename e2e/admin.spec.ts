@@ -57,3 +57,19 @@ test("an empty map offers a way forward", async ({ page }) => {
   await expect(page).not.toHaveURL(/diet=/);
   await expect(page.getByText(/Nothing matching your filters/)).toHaveCount(0);
 });
+
+test("Find food switches between map and a detailed list", async ({ page }) => {
+  await page.goto("/map");
+  await page.getByRole("tab", { name: /List/ }).click();
+  await expect(page).toHaveURL(/view=list/);
+  const row = page.getByRole("article").first();
+  for (const label of ["Distance", "Pickup", "Amount", "Where", "Allergens", "Handover", "Posted"]) await expect(row.getByText(label, { exact: true })).toBeVisible();
+  await page.getByLabel("Sort").selectOption("newest");
+  await expect(page).toHaveURL(/sort=newest/);
+  await row.getByRole("button", { name: "View & reserve" }).click();
+  await expect(page.getByRole("dialog").or(page.getByLabel("Listing details")).first()).toBeVisible();
+  await page.goto("/map?view=list");
+  await page.getByRole("tab", { name: /Map/ }).click();
+  await expect(page).not.toHaveURL(/view=list/);
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+});
