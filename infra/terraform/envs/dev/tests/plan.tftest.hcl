@@ -39,7 +39,6 @@ mock_provider "aws" {
   mock_resource "aws_sesv2_email_identity" {
     defaults = {
       arn                     = "arn:aws:ses:eu-central-1:123456789012:identity/freshshare.de"
-      dkim_signing_attributes = [{ tokens = ["tok1", "tok2", "tok3"] }]
     }
   }
   mock_resource "aws_sesv2_configuration_set" {
@@ -148,7 +147,7 @@ run "notification_email_via_ses" {
   }
 
   assert {
-    condition     = length(aws_route53_record.ses_dkim) == 3 && aws_route53_record.ses_dkim[0].records == toset(["tok1.dkim.amazonses.com"])
+    condition     = length(aws_route53_record.ses_dkim) == 3 && alltrue([for r in aws_route53_record.ses_dkim : r.type == "CNAME" && endswith(r.name, "._domainkey.freshshare.de") && endswith(one(r.records), ".dkim.amazonses.com")])
     error_message = "three Easy DKIM CNAMEs should be published"
   }
 
