@@ -60,6 +60,7 @@ npm run db:migrate && npm run db:seed
 npm run dev          # api on :4000, web on http://localhost:5173
 npm test             # API tests against a real Postgres (DATABASE_URL, default freshshare_test)
 npm run lint
+npm run db:seed && npm run e2e   # Playwright demo path (first time: npx playwright install chromium)
 ```
 
 Seeded users log in with the `demoPassword` from `data/seed.json`. On AWS, run **Actions → App build and deploy** with `seed=true` to reset the demo data.

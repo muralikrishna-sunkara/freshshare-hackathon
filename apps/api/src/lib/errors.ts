@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import multer from "multer";
 import { ZodError } from "zod";
 import { logger } from "./logger.js";
 
@@ -15,6 +16,13 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
     res.status(400).json({
       error: { code: "validation_error", message: err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") },
+    });
+    return;
+  }
+  if (err instanceof multer.MulterError) {
+    const tooBig = err.code === "LIMIT_FILE_SIZE";
+    res.status(tooBig ? 413 : 400).json({
+      error: { code: tooBig ? "photo_too_large" : "upload_error", message: tooBig ? "Photos can be up to 5 MB" : err.message },
     });
     return;
   }
