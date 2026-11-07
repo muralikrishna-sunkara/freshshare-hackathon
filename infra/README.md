@@ -133,6 +133,19 @@ If you subscribed an email to ops alerts, confirm the SNS email.
 
 Do not point `dev.freshshare.food` itself at the ALB: the survey runs there.
 
+## Notification emails (Amazon SES)
+
+With `APP_DOMAIN` and `ROUTE53_ZONE_ID` set, Terraform creates an SES domain identity for the domain (Easy DKIM, MAIL FROM `mail.<domain>` with SPF, a monitoring-only DMARC record), a configuration set that suppresses bounces and complaints, and lets the api task role send only as `notifications@<domain>`. The api then runs with `EMAIL_TRANSPORT=ses`. Emails go out for `claim_received`, `claim_confirmed` and `new_message` (at most one message email per pickup every 10 minutes); everything else is in-app only. Fictional `@demo.freshshare.de` and `@example.test` accounts never get mail in production.
+
+New SES accounts are in the **sandbox**: they can only send to verified addresses, 200 a day.
+
+1. For testing, set the GitHub variable `SES_SANDBOX_RECIPIENTS` to a JSON list such as `["you@example.com"]` and run the Terraform workflow; AWS emails each address a verification link.
+2. To email everyone, request production access once (AWS reviews it, usually within a day):
+   `aws sesv2 put-account-details --production-access-enabled --mail-type TRANSACTIONAL --website-url https://freshshare.de --contact-language EN --use-case-description "Transactional notifications for a neighbourhood food-sharing app: someone reserved your food, your pickup was confirmed, new chat message. Users opt in when they register and can turn emails off in their profile."`
+3. Check the identity is verified: `aws sesv2 get-email-identity --email-identity freshshare.de --query 'DkimAttributes.Status'` should say `SUCCESS` (DNS can take a few minutes).
+
+Locally, `docker compose` starts Mailpit; open http://localhost:8025 to read every email the app sends.
+
 ## Tomorrow: switching to the real app
 
 `app-deploy.yml` does nothing until `apps/api/Dockerfile` or

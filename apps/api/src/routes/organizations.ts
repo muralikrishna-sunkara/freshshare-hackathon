@@ -5,6 +5,7 @@ import { isAdmin, requireAuth, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { distanceM, roundDistance } from "../lib/geo.js";
 import { prisma } from "../lib/prisma.js";
+import { notify } from "../services/notify.js";
 import { docUpload, sniffDoc } from "../lib/upload.js";
 import { HOLD_MINUTES } from "../services/claims.js";
 import { findNearby } from "../services/listings.js";
@@ -273,9 +274,20 @@ organizations.post(
         const holdUntil = new Date(Math.max(Date.now() + HOLD_MINUTES * 60_000, l.pickupUntil.getTime()));
         const claim = await tx.claim.create({ data: { listingId, receiverId: me, organizationId: id, bulkClaimId: bulk.id, holdUntil } });
         await tx.bulkClaimItem.create({ data: { bulkClaimId: bulk.id, listingId, claimId: claim.id } });
-        return true;
+        return { giverId: l.giverId, title: l.title, claimId: claim.id };
       });
       if (!ok) taken.push(listingId);
+      else {
+        const org = await prisma.organization.findUnique({ where: { id }, select: { name: true } });
+        await notify(ok.giverId, {
+          type: "claim_received",
+          title: `${org?.name ?? "An organization"} would like your ${ok.title}`,
+          body: "Confirm the request on the pickup page. Your exact address is shared only after you confirm.",
+          link: `/pickups/${ok.claimId}`,
+          listingId,
+          claimId: ok.claimId,
+        });
+      }
     }
     if (taken.length === ids.length) {
       await prisma.bulkClaim.delete({ where: { id: bulk.id } });

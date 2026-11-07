@@ -4,6 +4,7 @@ import { AdminPage } from "./pages/Admin";
 import { ClaimPage } from "./pages/ClaimPage";
 import { FridgePage, FridgesPage, SuggestFridgePage } from "./pages/Fridges";
 import { BulkClaimPage, NewBulkClaimPage, OrgDashboardPage, OrganizationPage, OrganizationsPage, RegisterOrganizationPage } from "./pages/Organizations";
+import { NotificationsPage } from "./pages/Notifications";
 import { ContactPage, CreditsPage, ImprintPage, NotFoundPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
 import { Landing } from "./pages/Landing";
 import { ListingPage } from "./pages/ListingPage";
@@ -52,6 +53,7 @@ export function App() {
         <Route path="/pickups" element={<RequireAuth><Pickups /></RequireAuth>} />
         <Route path="/pickups/:id" element={<RequireAuth><ClaimPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

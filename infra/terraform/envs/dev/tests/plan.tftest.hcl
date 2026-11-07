@@ -36,6 +36,15 @@ mock_provider "aws" {
       arn_suffix = "targetgroup/tg/abc"
     }
   }
+  mock_resource "aws_sesv2_email_identity" {
+    defaults = {
+      arn                     = "arn:aws:ses:eu-central-1:123456789012:identity/freshshare.de"
+      dkim_signing_attributes = [{ tokens = ["tok1", "tok2", "tok3"] }]
+    }
+  }
+  mock_resource "aws_sesv2_configuration_set" {
+    defaults = { arn = "arn:aws:ses:eu-central-1:123456789012:configuration-set/freshshare-dev-app" }
+  }
   mock_resource "aws_iam_role" {
     defaults = { arn = "arn:aws:iam::123456789012:role/mock" }
   }
@@ -124,5 +133,42 @@ run "real_images_and_byo_certificate" {
   assert {
     condition     = output.app_url == "https://app.dev.freshshare.food"
     error_message = "app_url should use the domain over HTTPS"
+  }
+}
+
+run "notification_email_via_ses" {
+  command = apply # mocked providers: nothing is created in AWS
+
+  variables {
+    api_image              = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/freshshare-dev/api:abc123"
+    web_image              = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/freshshare-dev/web:abc123"
+    domain_name            = "freshshare.de"
+    route53_zone_id        = "Z0000000000000000000"
+    ses_sandbox_recipients = ["tester@example.com"]
+  }
+
+  assert {
+    condition     = length(aws_route53_record.ses_dkim) == 3 && aws_route53_record.ses_dkim[0].records == toset(["tok1.dkim.amazonses.com"])
+    error_message = "three Easy DKIM CNAMEs should be published"
+  }
+
+  assert {
+    condition     = aws_sesv2_email_identity_mail_from_attributes.domain[0].mail_from_domain == "mail.freshshare.de"
+    error_message = "custom MAIL FROM should be mail.<domain>"
+  }
+
+  assert {
+    condition     = contains([for e in jsondecode(module.api.container_definitions)[0].environment : "${e.name}=${e.value}"], "EMAIL_TRANSPORT=ses")
+    error_message = "api should send email through SES when a domain and zone are set"
+  }
+
+  assert {
+    condition     = contains([for e in jsondecode(module.api.container_definitions)[0].environment : "${e.name}=${e.value}"], "EMAIL_FROM=FreshShare <notifications@freshshare.de>")
+    error_message = "api should send from notifications@<domain>"
+  }
+
+  assert {
+    condition     = length(aws_sesv2_email_identity.sandbox_recipient) == 1
+    error_message = "sandbox recipients should be verified identities"
   }
 }

@@ -7,6 +7,7 @@ import { Stars } from "../components/Stars";
 import { VerifiedBadge } from "../components/VerifiedBadge";
 import { useMe } from "../hooks/useMe";
 import { formatDay } from "../lib/format";
+import { UserImpactPanel } from "../components/ImpactPanel";
 
 /** Public profile, open to visitors: name, bio, rating and reviews. Never email or location. */
 export function PublicProfile() {
@@ -62,6 +63,7 @@ export function PublicProfile() {
             </div>
           ))}
         </section>
+        <UserImpactPanel userId={u.id} own={me.data?.id === u.id} />
         <section>
           <h2 className="mb-2 text-sm font-bold text-stone-700">Reviews</h2>
           {u.reviews.length === 0 ? (

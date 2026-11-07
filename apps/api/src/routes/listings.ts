@@ -4,6 +4,7 @@ import { requireAuth, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { jitter } from "../lib/geo.js";
 import { prisma } from "../lib/prisma.js";
+import { notifyNearby } from "../services/notify.js";
 import { postLimiter } from "../lib/rateLimit.js";
 import { storage } from "../lib/storage.js";
 import { reverseArea } from "../lib/geocode.js";
@@ -140,6 +141,7 @@ listings.post(
         l = await prisma.listing.findUniqueOrThrow({ where: { id: created.id }, include: { giver: true, fridge: true } });
       }
       res.status(201).json({ listing: { ...publicListing(l), lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot } });
+      void notifyNearby(l);
     } catch (e) {
       await prisma.listing.delete({ where: { id: created.id } }).catch(() => {});
       throw e;

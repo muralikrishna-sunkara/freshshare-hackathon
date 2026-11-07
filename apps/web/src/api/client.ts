@@ -88,6 +88,7 @@ export interface Me {
   homeLng: number;
   bio: string | null;
   role: "user" | "admin";
+  emailNotifications: boolean;
   termsVersion: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -184,7 +185,7 @@ export interface Impact {
 export const fetchImpact = (lat: number, lng: number, radius: number) =>
   api<Impact>(`/impact?${new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) })}`);
 
-export const updateProfile = (b: { name?: string; bio?: string | null; homeLat?: number; homeLng?: number }) =>
+export const updateProfile = (b: { name?: string; bio?: string | null; homeLat?: number; homeLng?: number; emailNotifications?: boolean }) =>
   api<{ user: Me }>("/me", { ...json(b), method: "PATCH" }).then((r) => r.user);
 
 export interface PublicProfile {
@@ -336,3 +337,55 @@ export interface EarlyAccessStats {
   latest: { id: string; email: string; role: EarlyAccessRole; postcode: string | null; source: string | null; createdAt: string }[];
 }
 export const fetchEarlyAccessStats = () => api<EarlyAccessStats>("/admin/early-access");
+
+export type NotificationType =
+  | "claim_received" | "claim_confirmed" | "claim_cancelled" | "new_message" | "listing_expiring_soon"
+  | "new_listing_nearby" | "waitlist_offer" | "fridge_approved" | "org_approved";
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+export const fetchNotifications = () => api<{ notifications: AppNotification[]; unreadCount: number }>("/notifications");
+export const markNotificationRead = (id: string) => api<{ unreadCount: number }>(`/notifications/${id}/read`, { method: "POST" });
+export const markAllNotificationsRead = () => api<{ unreadCount: number }>("/notifications/read-all", { method: "POST" });
+
+export interface ImpactTotals4 {
+  meals: number;
+  kg: number;
+  co2Kg: number;
+  waterL: number;
+  pickups: number;
+}
+export interface ImpactMonth {
+  month: string;
+  label: string;
+  meals: number;
+  kg: number;
+}
+export interface UserImpact {
+  user: { id: string; name: string; memberSince: string };
+  total: ImpactTotals4;
+  given: ImpactTotals4;
+  received: ImpactTotals4;
+  listingsShared: number;
+  fridgeCheckIns: number;
+  monthly: ImpactMonth[];
+  factors: { kgPerPortion: number; co2ePerKg: number; waterLitresPerKg: number };
+}
+export interface OrgImpact {
+  organization: { id: string; name: string };
+  total: ImpactTotals4;
+  last12Months: ImpactTotals4;
+  pickupRuns: number;
+  giversHelped: number;
+  categories: { category: Category; meals: number }[];
+  monthly: ImpactMonth[];
+  factors: { kgPerPortion: number; co2ePerKg: number; waterLitresPerKg: number };
+}
+export const fetchUserImpact = (id: string) => api<UserImpact>(`/impact/users/${id}`);
+export const fetchOrgImpact = (id: string) => api<OrgImpact>(`/impact/organizations/${id}`);

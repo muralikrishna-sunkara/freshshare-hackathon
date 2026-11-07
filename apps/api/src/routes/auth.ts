@@ -121,6 +121,7 @@ const profileBody = z.object({
   bio: z.string().trim().max(300, "Keep your bio under 300 characters").nullable().optional(),
   homeLat: z.number().min(-90).max(90).optional(),
   homeLng: z.number().min(-180).max(180).optional(),
+  emailNotifications: z.boolean().optional(),
 });
 
 me.patch(
@@ -131,7 +132,7 @@ me.patch(
     if ((b.homeLat === undefined) !== (b.homeLng === undefined)) throw new HttpError(400, "validation_error", "Send both homeLat and homeLng");
     const user = await prisma.user.update({
       where: { id: userId(req) },
-      data: { name: b.name, bio: b.bio === "" ? null : b.bio, homeLat: b.homeLat, homeLng: b.homeLng },
+      data: { name: b.name, bio: b.bio === "" ? null : b.bio, homeLat: b.homeLat, homeLng: b.homeLng, emailNotifications: b.emailNotifications },
     });
     res.json({ user: await meView(user) });
   }),

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useMe } from "../hooks/useMe";
+import { useUnreadCount } from "../hooks/useUnreadCount";
 
 const navCls = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? "bg-brand-light text-brand-dark" : "text-stone-600 hover:bg-stone-100"}`;
@@ -10,6 +11,7 @@ export function AppHeader() {
   const me = useMe();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
+  const unread = useUnreadCount(!!me.data);
   const links: [string, string][] = [
     ["/map", "Find food"],
     ["/fridges", "Fridges"],
@@ -32,6 +34,20 @@ export function AppHeader() {
           <Link to="/share" className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-bold text-white shadow-sm hover:brightness-95">
             + Share food
           </Link>
+          {me.data && (
+            <Link
+              to="/notifications"
+              aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-xl hover:bg-stone-100"
+            >
+              <span aria-hidden>🔔</span>
+              {unread > 0 && (
+                <span data-testid="unread-badge" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+            </Link>
+          )}
           {me.data ? (
             <Link
               to="/profile"

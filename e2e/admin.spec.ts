@@ -17,7 +17,8 @@ test("admin works the reports queue and sees early-access sign-ups", async ({ br
   const stamp = `e2e-${Date.now() % 100000}`;
   const sara = await signIn(browser, "sara@demo.freshshare.de");
   const near = await (await sara.request.get("/api/listings?lat=49.5897&lng=11.0040&radius=2000")).json();
-  const target = near.listings.find((l: { giver: { name: string } }) => !l.giver.name.startsWith("Sara"));
+  // Tom's yoghurt: nothing else in the suite reports it, so an open report from Sara can't already exist.
+  const target = near.listings.find((l: { giver: { name: string } }) => l.giver.name.startsWith("Tom"));
   expect((await sara.request.post("/api/reports", { data: { listingId: target.id, reason: "spam", note: `report ${stamp}` } })).status()).toBe(201);
   expect((await sara.request.get("/api/admin/reports")).status()).toBe(403);
 

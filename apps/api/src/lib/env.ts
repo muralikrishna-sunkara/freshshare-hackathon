@@ -13,6 +13,10 @@ const schema = z.object({
   AWS_REGION: z.string().default("eu-central-1"),
   SNS_NOTIFICATIONS_ARN: z.string().optional(),
   LOG_LEVEL: z.string().default("info"),
+  // Email for notifications: "ses" on AWS, "smtp" = Mailpit locally (its HTTP send API), "log" prints, "memory" for tests.
+  EMAIL_TRANSPORT: z.enum(["ses", "smtp", "log", "memory", "off"]).default(process.env.NODE_ENV === "test" ? "memory" : "log"),
+  EMAIL_FROM: z.string().default("FreshShare <notifications@freshshare.de>"),
+  MAILPIT_URL: z.string().default("http://localhost:8025"),
   // Photon reverse geocoding for the public "91054 Altstadt" area label. "off" in tests.
   GEOCODER: z.enum(["photon", "off"]).default(process.env.NODE_ENV === "test" ? "off" : "photon"),
   PHOTON_URL: z.string().default("https://photon.komoot.io"),
