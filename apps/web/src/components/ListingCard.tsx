@@ -58,7 +58,18 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
             ))}
           </div>
         )}
-        {!compact && l.description && <p className="text-sm text-stone-700">{l.description}</p>}
+        {!compact && l.description && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-stone-500">{t("Description")}</p>
+            <p className="whitespace-pre-line text-sm text-stone-700">{l.description}</p>
+          </div>
+        )}
+        {!compact && l.pickupInstructions && (
+          <div className="rounded-xl bg-brand-light p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-dark">{t("Pickup instructions")}</p>
+            <p className="whitespace-pre-line text-sm text-stone-800">{l.pickupInstructions}</p>
+          </div>
+        )}
         {!compact && l.allergens.length > 0 && (
           <p className="text-sm text-stone-600">{t("Contains: {list}", { list: l.allergens.map(allergenLabel).join(", ") })}</p>
         )}

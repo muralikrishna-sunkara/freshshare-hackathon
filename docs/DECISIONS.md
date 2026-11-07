@@ -77,3 +77,10 @@
 - Small in-house `t()` helper (`apps/web/src/i18n`) instead of a library: English text is the key, German lives in `de.ts`, a missing entry falls back to English.
 - Language comes from the EN/DE switch (saved in localStorage) or the browser language. Switching reloads the page so module-level labels and date formats rebuild.
 - Translated: the public and everyday screens (landing, browse, listing, share/edit, pickups, sign in/up, password reset, notifications page, fridge sheet, header/footer). Still English: admin, organizations, recurring, terms/privacy texts, and messages that come from the API (errors, notification texts).
+
+## Share form fixes (2026-11-07)
+- Pickup instructions are a separate listing field (`pickupInstructions`, 300 chars). Like the exact address, only the giver and the confirmed receiver get it from the API.
+- The share form validates on submit with a message per field and a summary, instead of a disabled button; required fields carry a red *.
+- Fill from photo runs by itself on the first photo of a new listing (the button stays for a retry). It only shows when the api has `AI_API_KEY`.
+- Header "+ Share food" removed at Krish's request; Share food stays on the browse page.
+- Demo fridge photos supplied by Krish (licence to confirm before public launch). Photos with a real organization's branding or a recognisable person were not used. Org logos are original drawings for the fictional demo orgs.

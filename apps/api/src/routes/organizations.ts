@@ -334,7 +334,7 @@ const bulkView = (bulk: Awaited<ReturnType<typeof loadBulk>>["bulk"], role: OrgR
         giver: { id: l.giver.id, name: l.giver.name },
         distanceM: roundDistance(distanceM(origin.lat, origin.lng, l.publicLat, l.publicLng)),
         // Exact pickup spot only once the giver confirmed, as for any claim.
-        ...(confirmed ? { lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot } : {}),
+        ...(confirmed ? { lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot, pickupInstructions: l.pickupInstructions } : {}),
       },
     };
   }),

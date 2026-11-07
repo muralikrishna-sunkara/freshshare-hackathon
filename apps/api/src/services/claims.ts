@@ -36,7 +36,7 @@ export function claimView(c: ClaimFull, role: "giver" | "receiver") {
     role,
     listing: {
       ...publicListing(c.listing),
-      ...(revealed ? { lat: c.listing.lat, lng: c.listing.lng, handoverSpot: c.listing.handoverSpot } : {}),
+      ...(revealed ? { lat: c.listing.lat, lng: c.listing.lng, handoverSpot: c.listing.handoverSpot, pickupInstructions: c.listing.pickupInstructions } : {}),
     },
     receiver: giverView(c.receiver),
     // T2.6: the receiver shows this (as a QR code or 6 digits) and the giver enters or scans it to complete the pickup.

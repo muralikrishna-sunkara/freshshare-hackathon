@@ -182,6 +182,7 @@ model Listing {
   publicLat         Float
   publicLng         Float
   handoverSpot      String?
+  pickupInstructions String?
   fridgeId          String?
   fridge            Fridge?           @relation(fields: [fridgeId], references: [id])
   pickupFrom        DateTime
@@ -456,6 +457,7 @@ model ListingSchedule {
   portions       Int      @default(1)
   weightKg       Float?
   handoverSpot   String?
+  pickupInstructions String?
   photos         String[]
   /// 0 = Sunday ... 6 = Saturday (Europe/Berlin)
   daysOfWeek     Int[]

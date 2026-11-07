@@ -28,7 +28,7 @@ interface SeedFile {
   impactBaseline?: { portionsThisWeek: number };
   organizations?: {
     key: string; name: string; type: OrgType; email: string; website?: string; address: string; city: string; lat: number; lng: number;
-    description: string; mission?: string; serviceArea?: string; contactName: string; status: OrgStatus; members: { user: string; role: OrgRole }[];
+    description: string; mission?: string; serviceArea?: string; contactName: string; status: OrgStatus; logo?: string; members: { user: string; role: OrgRole }[];
   }[];
   pendingFridges?: { key: string; name: string; kind: FridgeKind; address: string; lat: number; lng: number; openingHours: string; description?: string; accessNotes?: string; suggestedBy: string }[];
 }
@@ -209,6 +209,9 @@ export async function runSeed(
         description: o.description, mission: o.mission ?? null, serviceArea: o.serviceArea ?? null, contactName: o.contactName, status: o.status,
         createdById: users[o.members.find((m) => m.role === "admin")!.user],
         ...(o.status === "approved" ? { verifiedAt: now, verifiedById: users.admin ?? null } : {}),
+        logoUrl: o.logo
+          ? await storage.put(`seed/${o.logo.replace(/\.\w+$/, "")}.webp`, await sharp(await readFile(path.join(dir, "seed-photos", o.logo))).resize(256, 256, { fit: "contain", background: "#ffffff" }).webp({ quality: 90 }).toBuffer(), "image/webp")
+          : null,
         members: { create: o.members.map((m) => ({ userId: users[m.user], role: m.role })) },
       },
     });

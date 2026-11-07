@@ -29,3 +29,11 @@ These photos come from Wikimedia Commons and are used under the licenses below. 
 | orange-juice.jpg | Orange juice | Scott Bauer, U.S. Department of Agriculture | Public domain | [Orange juice.jpg](https://commons.wikimedia.org/wiki/File:Orange_juice.jpg) |
 | granola.jpg | Granola | LironOmri12 | [CC0](https://creativecommons.org/publicdomain/zero/1.0/deed.en) | [Granola.jpg](https://commons.wikimedia.org/wiki/File:Granola.jpg) |
 | tea.jpg | Herbal tea | einalem from Leeds | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) | [Peppermint tea.jpg](https://commons.wikimedia.org/wiki/File:Peppermint_tea.jpg) |
+
+## Community fridges and organization logos
+
+| File | Shows | Author | Licence | Source |
+|---|---|---|---|---|
+| fridge-parish-hall.jpg | Outdoor community fridge with a mural, stocked with food | Supplied by the FreshShare team for the demo | To confirm before public launch | Provided by Krish, 2026-11-07 |
+| fridge-student-cafe.jpg | Glass-door community fridge with fruit, vegetables and yoghurt | Supplied by the FreshShare team for the demo | To confirm before public launch | Provided by Krish, 2026-11-07 |
+| org-*.png | Sample logos for the fictional demo organizations | Drawn for FreshShare (original SVG artwork) | Same as this repository | `data/seed-photos/` |

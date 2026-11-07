@@ -47,7 +47,7 @@ export async function postFromSchedule(s: ListingSchedule, now = new Date()) {
   const l = await prisma.listing.create({
     data: {
       giverId: s.userId, title: s.title, description: s.description, category: s.category, origin: s.origin, allergens: s.allergens,
-      dietaryTags: s.dietaryTags, weightKg: s.weightKg, portions: s.portions, handoverSpot: s.handoverSpot,
+      dietaryTags: s.dietaryTags, weightKg: s.weightKg, portions: s.portions, handoverSpot: s.handoverSpot, pickupInstructions: s.pickupInstructions,
       photoUrl: s.photos[0] ?? "", photos: s.photos, lat: giver.homeLat, lng: giver.homeLng, publicLat: pub.lat, publicLng: pub.lng,
       postcode: area.postcode, areaName: area.areaName, bestBefore, pickupFrom: now, pickupUntil, scheduleId: s.id,
     },

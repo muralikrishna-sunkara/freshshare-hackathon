@@ -65,6 +65,7 @@ const createBody = z
       .pipe(z.array(z.enum(DIETARY_TAGS, { errorMap: () => ({ message: "Unknown dietary tag" }) }))),
     weightKg: z.coerce.number().min(0.05).max(50).optional(),
     handoverSpot: optionalText(120),
+    pickupInstructions: optionalText(300),
     // "Post again": reuse the photos of one of your own earlier listings when no new photo is attached.
     fromListingId: z.string().min(1).max(40).optional(),
     // "Drop at a community fridge": the listing's place is that (public) fridge instead of the giver's home.
@@ -127,7 +128,7 @@ listings.post(
         giverId, title: b.title, description: b.description, category: b.category, origin: b.origin, allergens: b.allergens,
         dietaryTags: b.dietaryTags, weightKg: b.weightKg ?? null, postcode: area.postcode, areaName: area.areaName,
         bestBefore: b.bestBefore, photoUrl: reusedPhotos[0] ?? "", photos: reusedPhotos, lat: place.lat, lng: place.lng, fridgeId: fridge?.id ?? null,
-        publicLat: pub.lat, publicLng: pub.lng, handoverSpot: b.handoverSpot, pickupFrom: b.pickupFrom, pickupUntil: b.pickupUntil,
+        publicLat: pub.lat, publicLng: pub.lng, handoverSpot: b.handoverSpot, pickupInstructions: b.pickupInstructions, pickupFrom: b.pickupFrom, pickupUntil: b.pickupUntil,
         portions: b.portions,
       },
     });
@@ -141,7 +142,7 @@ listings.post(
       } else {
         l = await prisma.listing.findUniqueOrThrow({ where: { id: created.id }, include: { giver: true, fridge: true } });
       }
-      res.status(201).json({ listing: { ...publicListing(l), lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot } });
+      res.status(201).json({ listing: { ...publicListing(l), lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot, pickupInstructions: l.pickupInstructions } });
       void notifyNearby(l);
     } catch (e) {
       await prisma.listing.delete({ where: { id: created.id } }).catch(() => {});
@@ -174,6 +175,7 @@ const editBody = z.object({
     .optional()
     .transform((v) => (v === undefined ? undefined : v === "" ? null : v)),
   handoverSpot: z.string().trim().max(120).optional().transform((v) => (v === undefined ? undefined : v || null)),
+  pickupInstructions: z.string().trim().max(300).optional().transform((v) => (v === undefined ? undefined : v || null)),
 });
 
 /** Edit my listing while it's still available. New photos (if any) replace the old ones; the place stays the same. */
@@ -226,7 +228,7 @@ listings.patch(
       },
       include: { giver: true, fridge: true },
     });
-    res.json({ listing: { ...publicListing(updated), isMine: true, lat: updated.lat, lng: updated.lng, handoverSpot: updated.handoverSpot } });
+    res.json({ listing: { ...publicListing(updated), isMine: true, lat: updated.lat, lng: updated.lng, handoverSpot: updated.handoverSpot, pickupInstructions: updated.pickupInstructions } });
   }),
 );
 
@@ -241,7 +243,7 @@ listings.get(
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-    res.json({ listings: rows.map((l) => ({ ...publicListing(l), handoverSpot: l.handoverSpot })) });
+    res.json({ listings: rows.map((l) => ({ ...publicListing(l), handoverSpot: l.handoverSpot, pickupInstructions: l.pickupInstructions })) });
   }),
 );
 
@@ -270,7 +272,7 @@ listings.get(
         heldUntil: l.reservedForUserId && l.reservedUntil && l.reservedUntil > new Date() ? l.reservedUntil : null,
         heldForMe: !!viewer && l.reservedForUserId === viewer && !!l.reservedUntil && l.reservedUntil > new Date(),
         waitlist: await waitlistStatus(l.id, viewer),
-        ...(canSeeExact ? { lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot } : {}),
+        ...(canSeeExact ? { lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot, pickupInstructions: l.pickupInstructions } : {}),
       },
     });
   }),

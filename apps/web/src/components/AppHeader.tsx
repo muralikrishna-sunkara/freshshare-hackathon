@@ -32,9 +32,6 @@ export function AppHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link to="/share" className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-bold text-white shadow-sm hover:brightness-95">
-            + {t("Share food")}
-          </Link>
           {me.data && (
             <Link
               to="/notifications"

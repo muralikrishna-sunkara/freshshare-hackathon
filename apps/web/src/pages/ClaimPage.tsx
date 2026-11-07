@@ -83,6 +83,12 @@ export function ClaimPage() {
           {l.lat !== undefined && l.lng !== undefined ? (
             <div className="space-y-2">
               {l.handoverSpot && <p className="font-semibold">{t("Meet at:")} {l.handoverSpot}</p>}
+              {l.pickupInstructions && (
+                <div className="rounded-xl bg-brand-light p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-brand-dark">{t("Pickup instructions")}</p>
+                  <p className="whitespace-pre-line text-sm text-stone-800">{l.pickupInstructions}</p>
+                </div>
+              )}
               <div className="h-40 overflow-hidden rounded-xl">
                 <MapContainer center={[l.lat, l.lng]} zoom={16} className="h-full w-full" zoomControl={false}>
                   <TileLayer attribution="&copy; OpenStreetMap" url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />

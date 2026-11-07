@@ -73,7 +73,7 @@ describe("impact totals", () => {
     expect(res.body.meals).toBeGreaterThan(0);
     expect(res.body.co2Kg).toBe(Math.round(res.body.kgSaved * 2.5));
     expect(res.body.fridges).toBe(seedFile.fridges.length); // active only, not the pending suggestion
-    expect(res.body.organizations).toBe(1);
+    expect(res.body.organizations).toBe((seedFile.organizations as { status: string }[]).filter((o) => o.status === "approved").length);
   });
 });
 

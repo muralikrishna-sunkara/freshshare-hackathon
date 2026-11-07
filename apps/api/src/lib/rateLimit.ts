@@ -5,7 +5,7 @@ const skip = () => env.NODE_ENV === "test";
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 30,
+  limit: env.AUTH_RATE_LIMIT,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   skip,
