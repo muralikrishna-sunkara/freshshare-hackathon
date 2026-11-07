@@ -17,6 +17,7 @@ import { useMe } from "../hooks/useMe";
 import { useSavedSearches } from "../hooks/useSavedSearches";
 import { CATEGORY, DIETARY, FILL, formatDistance } from "../lib/format";
 import { AddressSearch } from "../components/AddressSearch";
+import { t, tn } from "../i18n";
 import { FridgeIcon } from "../components/FridgeIcon";
 
 const RADII = [1000, 2000, 5000, 10000] as const;
@@ -28,9 +29,9 @@ const chipOff = "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50
 
 type SortKey = "nearest" | "soonest" | "newest";
 const SORTS: Record<SortKey, { label: string; compare: (a: Listing, b: Listing) => number }> = {
-  nearest: { label: "Nearest first", compare: (a, b) => (a.distanceM ?? 0) - (b.distanceM ?? 0) },
-  soonest: { label: "Pickup ends soonest", compare: (a, b) => +new Date(a.pickupUntil) - +new Date(b.pickupUntil) },
-  newest: { label: "Newest first", compare: (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt) },
+  nearest: { label: t("Nearest first"), compare: (a, b) => (a.distanceM ?? 0) - (b.distanceM ?? 0) },
+  soonest: { label: t("Pickup ends soonest"), compare: (a, b) => +new Date(a.pickupUntil) - +new Date(b.pickupUntil) },
+  newest: { label: t("Newest first"), compare: (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt) },
 };
 
 export function MapHome() {
@@ -128,19 +129,19 @@ export function MapHome() {
   })();
   const fridges = fridgesQ.data ?? [];
   const radiusLabel = kmFilter ? formatDistance(kmFilter) : null;
-  const withinLabel = radiusLabel ? `within ${radiusLabel}` : "nearby, nearest first";
+  const withinLabel = radiusLabel ? t("within {d}", { d: radiusLabel }) : t("nearby, nearest first");
   const countLabel = listingsQ.isLoading
-    ? "Finding food nearby…"
-    : `${listings.length} ${listings.length === 1 ? "listing" : "listings"} ${withinLabel}`;
+    ? t("Finding food nearby…")
+    : `${tn("{n} listing", "{n} listings", listings.length)} ${withinLabel}`;
 
   const impactBanner = (
     <p className="rounded-xl bg-brand-light px-3 py-2 text-sm text-brand-dark" aria-live="polite">
       {impactQ.data ? (
         <>
-          🌱 This week your neighbourhood saved <strong>{impactQ.data.week.portions} portions</strong> (~{impactQ.data.week.kg} kg, estimate)
+          🌱 {t("This week your neighbourhood saved")} <strong>{tn("{n} portion", "{n} portions", impactQ.data.week.portions)}</strong> ({t("~{kg} kg, estimate", { kg: impactQ.data.week.kg })})
         </>
       ) : (
-        "🌱 Counting this week's saved food…"
+        `🌱 ${t("Counting this week's saved food…")}`
       )}
     </p>
   );
@@ -148,7 +149,7 @@ export function MapHome() {
   const renderFilters = (wrap: boolean) => (
     <div className={wrap ? "flex flex-wrap gap-2" : "-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5"}>
       <button onClick={() => setRadius(null)} className={`${chipBase} ${kmFilter === null ? chipOn : chipOff}`} aria-pressed={kmFilter === null}>
-        Any distance
+        {t("Any distance")}
       </button>
       {RADII.map((r) => (
         <button key={r} onClick={() => setRadius(kmFilter === r ? null : r)} className={`${chipBase} ${kmFilter === r ? chipOn : chipOff}`} aria-pressed={kmFilter === r}>
@@ -156,12 +157,12 @@ export function MapHome() {
         </button>
       ))}
       <button onClick={() => setShowFridges((v) => !v)} className={`${chipBase} ${showFridges ? chipOn : chipOff}`} aria-pressed={showFridges}>
-        <FridgeIcon className="mr-1 h-4 w-4" />Fridges
+        <FridgeIcon className="mr-1 h-4 w-4" />{t("Fridges")}
       </button>
       {!wrap && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
       {wrap && <span className="basis-full" />}
       <button onClick={() => setCategory(undefined)} className={`${chipBase} ${!category ? chipOn : chipOff}`} aria-pressed={!category}>
-        All
+        {t("All")}
       </button>
       {(Object.keys(CATEGORY) as Category[]).map((c) => (
         <button
@@ -175,12 +176,12 @@ export function MapHome() {
       ))}
       {!wrap && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
       <select
-        aria-label="Dietary"
+        aria-label={t("Dietary")}
         value={diet ?? ""}
         onChange={(e) => setDiet((e.target.value || undefined) as DietaryTag | undefined)}
         className={`${chipBase} ${diet ? chipOn : chipOff} pr-8`}
       >
-        <option value="">Any diet</option>
+        <option value="">{t("Any diet")}</option>
         {(Object.keys(DIETARY) as DietaryTag[]).map((d) => (
           <option key={d} value={d}>{DIETARY[d]}</option>
         ))}
@@ -190,17 +191,17 @@ export function MapHome() {
   const filters = renderFilters(isDesktop);
   const placeSearch = (
     <div className="flex items-end gap-2">
-      <AddressSearch label="Search a place" hideLabel placeholder="📍 Search a street or place" near={loc} onPick={(p) => setArea(p)} className="min-w-0 flex-1" />
+      <AddressSearch label={t("Search a place")} hideLabel placeholder={`📍 ${t("Search a street or place")}`} near={loc} onPick={(p) => setArea(p)} className="min-w-0 flex-1" />
       {at && (
         <button type="button" onClick={() => setArea(null)} className={`${chipBase} ${chipOff} shrink-0`}>
-          {device.source === "device" ? "Back to my location" : "Back to demo area"}
+          {device.source === "device" ? t("Back to my location") : t("Back to demo area")}
         </button>
       )}
     </div>
   );
 
   const viewToggle = (
-    <div className="flex shrink-0 rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist" aria-label="View">
+    <div className="flex shrink-0 rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist" aria-label={t("View")}>
       {(["map", "list"] as const).map((v) => (
         <button
           key={v}
@@ -209,7 +210,7 @@ export function MapHome() {
           onClick={() => setView(v)}
           className={`min-h-[36px] rounded-full px-4 ${view === v ? "bg-white text-stone-900 shadow" : "text-stone-500 hover:text-stone-800"}`}
         >
-          {v === "map" ? "🗺 Map" : "☰ List"}
+          {v === "map" ? `🗺 ${t("Map")}` : `☰ ${t("List")}`}
         </button>
       ))}
     </div>
@@ -217,7 +218,7 @@ export function MapHome() {
 
   const sortSelect = (
     <label className="flex items-center gap-2 text-sm text-stone-600">
-      Sort
+      {t("Sort")}
       <select value={sort} onChange={(e) => setFilter("sort", e.target.value === "nearest" ? undefined : e.target.value)} className="min-h-[40px] rounded-full bg-white px-3 font-semibold text-stone-800 ring-1 ring-stone-300">
         {(Object.keys(SORTS) as SortKey[]).map((k) => (
           <option key={k} value={k}>{SORTS[k].label}</option>
@@ -238,13 +239,13 @@ export function MapHome() {
       )}
       {!listingsQ.isLoading && listings.length > 0 && sorted.length === 0 && (
         <div className="rounded-2xl bg-white p-6 text-center ring-1 ring-stone-200">
-          <p className="font-semibold">No listings match “{q}”.</p>
-          <button className="mt-2 text-sm font-semibold text-brand-dark underline" onClick={() => setFilter("q", undefined)}>Clear search</button>
+          <p className="font-semibold">{t("No listings match “{q}”.", { q })}</p>
+          <button className="mt-2 text-sm font-semibold text-brand-dark underline" onClick={() => setFilter("q", undefined)}>{t("Clear search")}</button>
         </div>
       )}
       {showFridges && fridges.length > 0 && !listingsQ.isLoading && (
-        <section aria-label="Community fridges nearby">
-          <h2 className="mb-3 font-bold">Community fridges nearby ({fridges.length})</h2>
+        <section aria-label={t("Community fridges nearby")}>
+          <h2 className="mb-3 font-bold">{t("Community fridges nearby ({n})", { n: fridges.length })}</h2>
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {fridges.map((f) => (
               <li key={f.id}>
@@ -252,9 +253,9 @@ export function MapHome() {
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-light text-2xl text-brand-dark" aria-hidden><FridgeIcon className="h-7 w-7" /></span>
                   <span className="min-w-0 text-sm">
                     <span className="block truncate font-bold">{f.name}</span>
-                    <span className="block text-stone-600">{formatDistance(f.distanceM)} away · {f.openingHours}</span>
+                    <span className="block text-stone-600">{t("{d} away", { d: formatDistance(f.distanceM) })} · {f.openingHours}</span>
                     <span className="block text-stone-500">
-                      {f.lastCheckIn?.fillLevel ? `Last check-in: ${FILL[f.lastCheckIn.fillLevel].label}` : f.lastCheckIn ? `Last check-in: ${f.lastCheckIn.state}` : "No check-ins yet"}
+                      {f.lastCheckIn?.fillLevel ? t("Last check-in: {state}", { state: FILL[f.lastCheckIn.fillLevel].label }) : f.lastCheckIn ? t("Last check-in: {state}", { state: t(f.lastCheckIn.state) }) : t("No check-ins yet")}
                     </span>
                   </span>
                 </button>
@@ -282,34 +283,34 @@ export function MapHome() {
   const emptyState = !listingsQ.isLoading && !listingsQ.isError && listings.length === 0 && (
     <div className="space-y-3 rounded-2xl bg-white p-4 text-center shadow-lg ring-1 ring-stone-200">
       <div>
-        <p className="font-semibold">Nothing {filtered ? "matching your filters " : ""}{withinLabel === "nearby, nearest first" ? "nearby" : withinLabel} right now.</p>
+        <p className="font-semibold">{filtered ? t("Nothing matching your filters {where} right now.", { where: radiusLabel ? withinLabel : t("nearby") }) : t("Nothing {where} right now.", { where: radiusLabel ? withinLabel : t("nearby") })}</p>
         <p className="text-sm text-stone-600">
           {fridges.length > 0
-            ? `There ${fridges.length === 1 ? "is 1 community fridge" : `are ${fridges.length} community fridges`} nearby. They are on the map.`
-            : "New food is posted every day. Check back later."}
+            ? tn("There is 1 community fridge nearby. It is on the map.", "There are {n} community fridges nearby. They are on the map.", fridges.length)
+            : t("New food is posted every day. Check back later.")}
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2 text-sm">
         {filtered && (
           <button className="min-h-[40px] rounded-full px-4 font-semibold ring-1 ring-stone-300" onClick={() => setParams((p) => { const n = new URLSearchParams(p); n.delete("category"); n.delete("diet"); return n; }, { replace: true })}>
-            Clear filters
+            {t("Clear filters")}
           </button>
         )}
         {kmFilter !== null && (
           <button className="min-h-[40px] rounded-full bg-brand-dark px-4 font-bold text-white" onClick={() => setRadius(nextRadius ?? null)}>
-            {nextRadius ? `Search ${formatDistance(nextRadius)}` : "Any distance"}
+            {nextRadius ? t("Search {d}", { d: formatDistance(nextRadius) }) : t("Any distance")}
           </button>
         )}
-        <Link to="/share" className="min-h-[40px] rounded-full bg-accent px-4 py-2 font-bold text-white">Share food</Link>
+        <Link to="/share" className="min-h-[40px] rounded-full bg-accent px-4 py-2 font-bold text-white">{t("Share food")}</Link>
       </div>
     </div>
   );
 
   const errorNote = listingsQ.isError && (
     <div className="rounded-xl bg-red-50 p-3 text-sm text-red-800 shadow">
-      Could not load food nearby.{" "}
+      {t("Could not load food nearby.")}{" "}
       <button className="font-semibold underline" onClick={() => listingsQ.refetch()}>
-        Try again
+        {t("Try again")}
       </button>
     </div>
   );
@@ -342,24 +343,24 @@ export function MapHome() {
         <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6 lg:py-8">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Browse food</h1>
-              <p className="text-stone-600">Free food shared by your neighbours {radiusLabel ? `within ${radiusLabel}` : "near you, nearest first"}{loc.source === "demo" ? " of the Erlangen demo area" : ""}.</p>
+              <h1 className="text-3xl font-bold">{t("Browse food")}</h1>
+              <p className="text-stone-600">{radiusLabel ? t("Free food shared by your neighbours within {d}.", { d: radiusLabel }) : t("Free food shared by your neighbours near you, nearest first.")}{loc.source === "demo" ? ` ${t("Erlangen demo area.")}` : ""}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setView("map")} className="min-h-[44px] rounded-xl bg-white px-4 font-semibold text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50">📍 Map view</button>
-              <Link to="/share" className="flex min-h-[44px] items-center rounded-xl bg-brand-dark px-4 font-bold text-white hover:brightness-110">Share food</Link>
+              <button onClick={() => setView("map")} className="min-h-[44px] rounded-xl bg-white px-4 font-semibold text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50">📍 {t("Map view")}</button>
+              <Link to="/share" className="flex min-h-[44px] items-center rounded-xl bg-brand-dark px-4 font-bold text-white hover:brightness-110">{t("Share food")}</Link>
             </div>
           </div>
           <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="space-y-4">
               <section className={card} aria-labelledby="filters-h">
-                <h2 id="filters-h" className="mb-3 font-bold">Filters</h2>
+                <h2 id="filters-h" className="mb-3 font-bold">{t("Filters")}</h2>
                 {renderFilters(true)}
               </section>
               <section className={`${card} ${saved.items.length === 0 ? "hidden lg:block" : ""}`} aria-labelledby="saved-h">
-                <h2 id="saved-h" className="mb-2 font-bold">🔖 Saved searches <span className="text-sm font-normal text-stone-500">({saved.items.length})</span></h2>
+                <h2 id="saved-h" className="mb-2 font-bold">🔖 {t("Saved searches")} <span className="text-sm font-normal text-stone-500">({saved.items.length})</span></h2>
                 {saved.items.length === 0 ? (
-                  <p className="py-3 text-center text-sm text-stone-500">No saved searches yet. Use Save to keep these filters.</p>
+                  <p className="py-3 text-center text-sm text-stone-500">{t("No saved searches yet. Use Save to keep these filters.")}</p>
                 ) : (
                   <ul className="space-y-1">
                     {saved.items.map((s) => (
@@ -367,7 +368,7 @@ export function MapHome() {
                         <button className="min-h-[36px] flex-1 truncate rounded-lg px-2 text-left text-sm font-semibold text-brand-dark hover:bg-stone-50" onClick={() => setParams(new URLSearchParams(s.query), { replace: true })}>
                           {s.name}
                         </button>
-                        <button aria-label={`Delete saved search ${s.name}`} className="h-8 w-8 rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-700" onClick={() => saved.remove(s.id)}>✕</button>
+                        <button aria-label={t("Delete saved search {name}", { name: s.name })} className="h-8 w-8 rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-700" onClick={() => saved.remove(s.id)}>✕</button>
                       </li>
                     ))}
                   </ul>
@@ -383,8 +384,8 @@ export function MapHome() {
                     type="search"
                     value={q}
                     onChange={(e) => setFilter("q", e.target.value || undefined)}
-                    placeholder="Search food, area or neighbour"
-                    aria-label="Search listings"
+                    placeholder={t("Search food, area or neighbour")}
+                    aria-label={t("Search listings")}
                     className="min-h-[44px] w-full bg-transparent text-sm outline-none"
                   />
                 </label>
@@ -394,10 +395,10 @@ export function MapHome() {
                   disabled={saved.items.some((s) => s.query === searchQuery)}
                   className="min-h-[40px] rounded-full px-3 text-sm font-semibold text-brand-dark ring-1 ring-brand/40 hover:bg-brand-light disabled:opacity-50"
                 >
-                  {saved.items.some((s) => s.query === searchQuery) ? "✓ Saved" : "🔖 Save"}
+                  {saved.items.some((s) => s.query === searchQuery) ? `✓ ${t("Saved")}` : `🔖 ${t("Save")}`}
                 </button>
               </div>
-              <p className="text-sm text-stone-600">{listingsQ.isLoading ? "Finding food nearby…" : `${sorted.length} ${sorted.length === 1 ? "listing" : "listings"} found ${withinLabel}`}</p>
+              <p className="text-sm text-stone-600">{listingsQ.isLoading ? t("Finding food nearby…") : `${tn("{n} listing found", "{n} listings found", sorted.length)} ${withinLabel}`}</p>
               {errorNote}
               {emptyState}
               {browseGrid}
@@ -409,8 +410,8 @@ export function MapHome() {
       {isDesktop && (
         <div className="pointer-events-none fixed inset-y-0 right-0 top-16 z-[1050] w-[460px]">
           <div className="pointer-events-auto">
-            <Panel open={!!selected} onClose={closeListing} label="Listing details">{listingDetail}</Panel>
-            <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label="Community fridge">{fridgeDetail}</Panel>
+            <Panel open={!!selected} onClose={closeListing} label={t("Listing details")}>{listingDetail}</Panel>
+            <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label={t("Community fridge")}>{fridgeDetail}</Panel>
           </div>
         </div>
       )}
@@ -441,13 +442,13 @@ export function MapHome() {
           <aside className="flex w-[420px] shrink-0 flex-col border-r border-stone-200 bg-white">
             <div className="space-y-3 border-b border-stone-200 p-5">
               <div className="flex items-center justify-between gap-3">
-                <h1 className="text-2xl font-bold">Free food near you</h1>
+                <h1 className="text-2xl font-bold">{t("Free food near you")}</h1>
                 {viewToggle}
               </div>
               {impactBanner}
               {placeSearch}
               {filters}
-              {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
+              {loc.source === "demo" && <p className="text-xs text-stone-500">{t("Showing the Erlangen demo area.")}</p>}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
               <p className="mb-3 text-sm font-semibold text-stone-600">{countLabel}</p>
@@ -458,8 +459,8 @@ export function MapHome() {
           </aside>
           <main className="relative min-w-0 flex-1">
             {map}
-            <Panel open={!!selected} onClose={closeListing} label="Listing details">{listingDetail}</Panel>
-            <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label="Community fridge">{fridgeDetail}</Panel>
+            <Panel open={!!selected} onClose={closeListing} label={t("Listing details")}>{listingDetail}</Panel>
+            <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label={t("Community fridge")}>{fridgeDetail}</Panel>
           </main>
         </div>
       ) : (
@@ -471,7 +472,7 @@ export function MapHome() {
             </div>
             {placeSearch}
             {filters}
-            {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
+            {loc.source === "demo" && <p className="text-xs text-stone-500">{t("Showing the Erlangen demo area.")}</p>}
           </div>
           <main className="relative min-h-0 flex-1">
             {map}

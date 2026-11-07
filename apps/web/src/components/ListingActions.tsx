@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError, fetchListing, joinWaitlist, leaveWaitlist, reserveListing, type Listing } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, primaryBtn } from "./Page";
+import { t } from "../i18n";
 import { ReportButton } from "./ReportButton";
 
 /** Reserve button and status under the card in the bottom sheet. */
@@ -31,19 +32,19 @@ export function ListingActions({ listing }: { listing: Listing }) {
     return (
       <div className="space-y-2 px-4 pb-6">
         <Link to="/pickups" className="block rounded-xl bg-stone-100 p-3 text-center text-sm font-semibold">
-          This is your listing · see requests in My pickups
+          {t("This is your listing · see requests in My pickups")}
         </Link>
         {(d.status ?? listing.status) === "available" && (
           <Link to={`/share?edit=${listing.id}`} className="block rounded-xl bg-brand-dark p-3 text-center text-sm font-bold text-white">
-            ✏️ Edit listing
+            ✏️ {t("Edit listing")}
           </Link>
         )}
         <Link to={`/share?from=${listing.id}`} className="block rounded-xl p-3 text-center text-sm font-semibold text-brand-dark ring-1 ring-stone-300">
-          Post again
+          {t("Post again")}
         </Link>
         {listing.origin !== "homemade" && (
           <Link to={`/me/recurring?from=${listing.id}`} className="block rounded-xl p-3 text-center text-sm font-semibold text-brand-dark ring-1 ring-stone-300">
-            🔁 Repeat on a schedule
+            🔁 {t("Repeat on a schedule")}
           </Link>
         )}
       </div>
@@ -53,7 +54,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
     return (
       <div className="px-4 pb-6">
         <Link to={`/pickups/${d.myClaim.id}`} className={`${primaryBtn} flex items-center justify-center`}>
-          View your pickup ({d.myClaim.status})
+          {t("View your pickup ({status})", { status: t(d.myClaim.status) })}
         </Link>
       </div>
     );
@@ -67,46 +68,46 @@ export function ListingActions({ listing }: { listing: Listing }) {
       <ErrorNote error={reserve.error ?? join.error} />
       {d?.heldForMe && d.heldUntil && (
         <p className="rounded-xl bg-accent/15 p-3 text-center text-sm font-semibold text-stone-800" data-testid="held-for-me">
-          You were first on the waitlist: it's held for you until {time(d.heldUntil)}.
+          {t("You were first on the waitlist: it's held for you until {time}.", { time: time(d.heldUntil) })}
         </p>
       )}
       {available ? (
         me.data ? (
           <button className={primaryBtn} onClick={() => reserve.mutate()} disabled={reserve.isPending}>
-            {reserve.isPending ? "Reserving…" : "Reserve"}
+            {reserve.isPending ? t("Reserving…") : t("Reserve")}
           </button>
         ) : (
           <Link to={`/signin?next=${encodeURIComponent(`/map?listing=${listing.id}`)}`} className={`${primaryBtn} flex items-center justify-center`}>
-            Sign in to reserve
+            {t("Sign in to reserve")}
           </Link>
         )
       ) : (
         <div className="space-y-2 rounded-xl bg-stone-100 p-3 text-center" data-testid="waitlist-box">
           <p className="font-semibold text-stone-700">
-            {heldForOther ? `Offered to the next person on the waitlist until ${time(d!.heldUntil!)}` : "Reserved by someone else"}
+            {heldForOther ? t("Offered to the next person on the waitlist until {time}", { time: time(d!.heldUntil!) }) : t("Reserved by someone else")}
           </p>
           {position ? (
             <>
-              <p className="text-sm text-stone-700">You're <strong>#{position}</strong> on the waitlist. If the pickup falls through, you get it first for 30 minutes.</p>
+              <p className="text-sm text-stone-700">{t("You're #{n} on the waitlist. If the pickup falls through, you get it first for 30 minutes.", { n: position })}</p>
               <button type="button" onClick={() => leave.mutate()} disabled={leave.isPending} className="text-sm font-semibold text-stone-600 underline">
-                Leave waitlist
+                {t("Leave waitlist")}
               </button>
             </>
           ) : me.data ? (
             <button type="button" onClick={() => { reserve.reset(); join.mutate(); }} disabled={join.isPending} className={primaryBtn}>
-              {join.isPending ? "Joining…" : `Join waitlist${d?.waitlist.count ? ` (${d.waitlist.count} waiting)` : ""}`}
+              {join.isPending ? t("Joining…") : d?.waitlist.count ? t("Join waitlist ({n} waiting)", { n: d.waitlist.count }) : t("Join waitlist")}
             </button>
           ) : (
-            <Link to={`/signin?next=${encodeURIComponent(`/listings/${listing.id}`)}`} className="text-sm font-semibold text-brand-dark underline">Sign in to join the waitlist</Link>
+            <Link to={`/signin?next=${encodeURIComponent(`/listings/${listing.id}`)}`} className="text-sm font-semibold text-brand-dark underline">{t("Sign in to join the waitlist")}</Link>
           )}
         </div>
       )}
       <p className="text-center text-sm text-stone-600">
-        You'll get the exact address once {firstName} confirms. Meet in a public place if you prefer.
+        {t("You'll get the exact address once {name} confirms. Meet in a public place if you prefer.", { name: firstName })}
       </p>
       <div className="flex items-center justify-center gap-4 text-sm">
-        <Link to={`/listings/${listing.id}`} className="font-semibold text-brand-dark underline">Open full page</Link>
-        <ReportButton listingId={listing.id} label="Report listing" />
+        <Link to={`/listings/${listing.id}`} className="font-semibold text-brand-dark underline">{t("Open full page")}</Link>
+        <ReportButton listingId={listing.id} label={t("Report listing")} />
       </div>
     </div>
   );

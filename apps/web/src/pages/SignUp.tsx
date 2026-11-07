@@ -6,6 +6,7 @@ import { LocationPicker } from "../components/LocationPicker";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { TermsDialog } from "../components/TermsDialog";
 import { DEMO_CENTRE } from "../hooks/useLocation";
+import { t } from "../i18n";
 import { PasswordInput } from "../components/PasswordInput";
 
 export function SignUp() {
@@ -33,41 +34,41 @@ export function SignUp() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const errs = {
-      age: age ? undefined : "You must be 16 or older to use FreshShare",
-      terms: terms ? undefined : "Please read and accept the Terms & Conditions",
+      age: age ? undefined : t("You must be 16 or older to use FreshShare"),
+      terms: terms ? undefined : t("Please read and accept the Terms & Conditions"),
     };
     setConsentErr(errs);
     if (errs.age || errs.terms) return;
     m.mutate();
   };
   return (
-    <Page title="Create your account">
+    <Page title={t("Create your account")}>
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className={labelCls} htmlFor="name">Your name</label>
-          <input id="name" required minLength={2} autoComplete="name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anna K." />
+          <label className={labelCls} htmlFor="name">{t("Your name")}</label>
+          <input id="name" required minLength={2} autoComplete="name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("e.g. Anna K.")} />
         </div>
         <div>
-          <label className={labelCls} htmlFor="email">Email</label>
+          <label className={labelCls} htmlFor="email">{t("Email")}</label>
           <input id="email" type="email" required autoComplete="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div>
-          <label className={labelCls} htmlFor="password">Password</label>
+          <label className={labelCls} htmlFor="password">{t("Password")}</label>
           <PasswordInput id="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <p className="mt-1 text-xs text-stone-500">At least 8 characters.</p>
+          <p className="mt-1 text-xs text-stone-500">{t("At least 8 characters.")}</p>
         </div>
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className={labelCls + " mb-0"}>Home location</span>
-            <button type="button" onClick={useMyLocation} className="text-sm font-semibold text-brand-dark underline">Use my location</button>
+            <span className={labelCls + " mb-0"}>{t("Home location")}</span>
+            <button type="button" onClick={useMyLocation} className="text-sm font-semibold text-brand-dark underline">{t("Use my location")}</button>
           </div>
           <LocationPicker value={home} onChange={setHome} />
-          <p className="mt-1 text-xs text-stone-500">Tap the map. Neighbours only ever see an area about 150 m around it, never your address, until you confirm a pickup.</p>
+          <p className="mt-1 text-xs text-stone-500">{t("Tap the map. Neighbours only ever see an area about 150 m around it, never your address, until you confirm a pickup.")}</p>
         </div>
         <div>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-1" checked={age} onChange={(e) => setAge(e.target.checked)} />
-            <span>I am 16 or older *</span>
+            <span>{t("I am 16 or older")} *</span>
           </label>
           {consentErr.age && <p className="mt-1 text-sm text-red-700">{consentErr.age}</p>}
         </div>
@@ -85,14 +86,14 @@ export function SignUp() {
               }}
             />
             <span>
-              I accept the{" "}
+              {t("I accept the")}{" "}
               <button type="button" className="font-semibold text-brand-dark underline" onClick={() => setTermsOpen(true)}>
-                Terms & Conditions
+                {t("Terms & Conditions")}
               </button>{" "}
               *
             </span>
           </label>
-          <p id="terms-help" className="ml-6 mt-1 text-xs text-stone-500">You must read and accept our food sharing etiquette guidelines</p>
+          <p id="terms-help" className="ml-6 mt-1 text-xs text-stone-500">{t("You must read and accept our food sharing etiquette guidelines")}</p>
           {consentErr.terms && <p className="ml-6 mt-1 text-sm text-red-700">{consentErr.terms}</p>}
         </div>
         <TermsDialog
@@ -108,9 +109,9 @@ export function SignUp() {
           }}
         />
         <ErrorNote error={m.error} />
-        <button className={primaryBtn} disabled={m.isPending}>{m.isPending ? "Creating…" : "Create account"}</button>
+        <button className={primaryBtn} disabled={m.isPending}>{m.isPending ? t("Creating…") : t("Create account")}</button>
         <p className="text-center text-sm text-stone-600">
-          Already have an account? <Link className="font-semibold text-brand-dark underline" to={`/signin?next=${encodeURIComponent(next)}`}>Sign in</Link>
+          {t("Already have an account?")} <Link className="font-semibold text-brand-dark underline" to={`/signin?next=${encodeURIComponent(next)}`}>{t("Sign in")}</Link>
         </p>
       </form>
     </Page>

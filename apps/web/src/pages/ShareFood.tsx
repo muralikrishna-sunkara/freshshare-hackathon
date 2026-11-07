@@ -4,31 +4,32 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { createListing, fetchAiStatus, fetchFridges, fetchListing, suggestFromPhoto, updateListing, type Category, type DietaryTag, type Origin } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
-import { CATEGORY, DIETARY, ORIGIN } from "../lib/format";
+import { locale, t } from "../i18n";
+import { allergenLabel, CATEGORY, DIETARY, ORIGIN } from "../lib/format";
 
 const MAX_PHOTOS = 4;
 
 /** Quick posting: picking a category pre-fills sensible defaults the giver can still change. */
 const TEMPLATES: Record<Category, { placeholder: string; origin?: Origin; dietary: DietaryTag[]; allergens: string[]; bestBeforeDays: number }> = {
-  leftovers: { placeholder: "e.g. Vegetable lasagne, 3 portions", origin: "homemade", dietary: ["vegetarian"], allergens: [], bestBeforeDays: 1 },
-  fruit_veg: { placeholder: "e.g. Bag of apples from our tree", origin: "fresh_produce", dietary: ["vegan", "vegetarian", "gluten_free", "lactose_free", "nut_free"], allergens: [], bestBeforeDays: 3 },
-  bread: { placeholder: "e.g. 4 bread rolls from this morning", origin: "packaged", dietary: ["vegetarian", "vegan"], allergens: ["gluten"], bestBeforeDays: 1 },
-  packaged: { placeholder: "e.g. 2 tins of chickpeas", origin: "packaged", dietary: [], allergens: [], bestBeforeDays: 30 },
-  dairy: { placeholder: "e.g. Natural yoghurt, 500 g", origin: "packaged", dietary: ["vegetarian", "gluten_free"], allergens: ["milk"], bestBeforeDays: 2 },
-  other: { placeholder: "e.g. Box of herbal tea", dietary: [], allergens: [], bestBeforeDays: 7 },
+  leftovers: { placeholder: t("e.g. Vegetable lasagne, 3 portions"), origin: "homemade", dietary: ["vegetarian"], allergens: [], bestBeforeDays: 1 },
+  fruit_veg: { placeholder: t("e.g. Bag of apples from our tree"), origin: "fresh_produce", dietary: ["vegan", "vegetarian", "gluten_free", "lactose_free", "nut_free"], allergens: [], bestBeforeDays: 3 },
+  bread: { placeholder: t("e.g. 4 bread rolls from this morning"), origin: "packaged", dietary: ["vegetarian", "vegan"], allergens: ["gluten"], bestBeforeDays: 1 },
+  packaged: { placeholder: t("e.g. 2 tins of chickpeas"), origin: "packaged", dietary: [], allergens: [], bestBeforeDays: 30 },
+  dairy: { placeholder: t("e.g. Natural yoghurt, 500 g"), origin: "packaged", dietary: ["vegetarian", "gluten_free"], allergens: ["milk"], bestBeforeDays: 2 },
+  other: { placeholder: t("e.g. Box of herbal tea"), dietary: [], allergens: [], bestBeforeDays: 7 },
 };
 
 const ALLERGENS = ["gluten", "milk", "eggs", "nuts", "peanuts", "soy", "sesame", "celery", "mustard", "fish"];
 const CHECKS = [
-  { key: "storedCold", label: "Stored cold (or doesn't need the fridge)" },
-  { key: "notPastDate", label: "Not past its date" },
-  { key: "wouldEatIt", label: "I would eat it myself" },
+  { key: "storedCold", label: t("Stored cold (or doesn't need the fridge)") },
+  { key: "notPastDate", label: t("Not past its date") },
+  { key: "wouldEatIt", label: t("I would eat it myself") },
 ] as const;
 const WINDOWS = [
-  { label: "Next 2 h", hours: 2 },
-  { label: "Next 4 h", hours: 4 },
-  { label: "Until 20:00", hours: -1 },
-  { label: "24 h", hours: 24 },
+  { label: t("Next 2 h"), hours: 2 },
+  { label: t("Next 4 h"), hours: 4 },
+  { label: t("Until 20:00"), hours: -1 },
+  { label: t("24 h"), hours: 24 },
 ];
 
 const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -180,35 +181,35 @@ export function ShareFood() {
   };
 
   return (
-    <Page title={editId ? "Edit listing" : fromId ? "Post again" : "Share food"}>
+    <Page title={editId ? t("Edit listing") : fromId ? t("Post again") : t("Share food")}>
       {editId && fromQ.data && !editable && (
         <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
           {!fromQ.data.isMine
-            ? "Only the person who posted this food can edit it."
+            ? t("Only the person who posted this food can edit it.")
             : fromQ.data.status === "reserved"
-              ? "Someone has reserved this food. Decline or finish that pickup before changing the listing."
-              : "This listing can't be changed any more. Use Post again to share it once more."}
+              ? t("Someone has reserved this food. Decline or finish that pickup before changing the listing.")
+              : t("This listing can't be changed any more. Use Post again to share it once more.")}
         </p>
       )}
       <p className="mb-4 rounded-xl bg-brand-light p-3 text-sm text-brand-dark">
         {editId
-          ? "Change what you need and save. Neighbours see the update straight away."
+          ? t("Change what you need and save. Neighbours see the update straight away.")
           : fromId
-          ? "We copied your earlier listing with fresh dates. Check it and post."
-          : "Share in 30 seconds. Pick a category and we fill in the usual details for you."}
+          ? t("We copied your earlier listing with fresh dates. Check it and post.")
+          : t("Share in 30 seconds. Pick a category and we fill in the usual details for you.")}
       </p>
       <form onSubmit={submit} className="space-y-5">
         <div>
-          <span className={labelCls}>Photos (at least 1, up to {MAX_PHOTOS})</span>
+          <span className={labelCls}>{t("Photos (at least 1, up to {n})", { n: MAX_PHOTOS })}</span>
           {shownPhotos.length > 0 ? (
             <div className="grid grid-cols-4 gap-2">
               {shownPhotos.map((src, i) => (
                 <div key={src} className="relative aspect-square overflow-hidden rounded-xl bg-stone-100">
-                  <img src={src} alt={i === 0 ? "Main photo" : `Photo ${i + 1}`} className="h-full w-full object-cover" />
+                  <img src={src} alt={i === 0 ? t("Main photo") : t("Photo {n}", { n: i + 1 })} className="h-full w-full object-cover" />
                   {previews.length > 0 && (
                     <button
                       type="button"
-                      aria-label={`Remove photo ${i + 1}`}
+                      aria-label={t("Remove photo {n}", { n: i + 1 })}
                       onClick={() => setPhotos((ps) => ps.filter((_, j) => j !== i))}
                       className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white"
                     >
@@ -220,7 +221,7 @@ export function ShareFood() {
               {previews.length > 0 && previews.length < MAX_PHOTOS && (
                 <label className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-stone-300 bg-white text-2xl text-stone-500">
                   +
-                  <input type="file" accept="image/*" multiple className="sr-only" aria-label="Add another photo" onChange={(e) => addPhotos(e.target.files)} />
+                  <input type="file" accept="image/*" multiple className="sr-only" aria-label={t("Add another photo")} onChange={(e) => addPhotos(e.target.files)} />
                 </label>
               )}
             </div>
@@ -230,10 +231,10 @@ export function ShareFood() {
               <div className={`flex items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-stone-300 bg-white ${shownPhotos.length ? "py-3" : "aspect-[4/3]"}`}>
                 <span className="text-center text-stone-500">
                   {!shownPhotos.length && <span className="block text-4xl">📷</span>}
-                  {shownPhotos.length ? "Use new photos instead" : "Take or choose photos"}
+                  {shownPhotos.length ? t("Use new photos instead") : t("Take or choose photos")}
                 </span>
               </div>
-              <input type="file" accept="image/*" capture="environment" multiple className="sr-only" aria-label="Photo" onChange={(e) => addPhotos(e.target.files)} />
+              <input type="file" accept="image/*" capture="environment" multiple className="sr-only" aria-label={t("Photo")} onChange={(e) => addPhotos(e.target.files)} />
             </label>
           )}
         </div>
@@ -246,25 +247,25 @@ export function ShareFood() {
               disabled={autofill.isPending}
               className="min-h-[44px] w-full rounded-xl bg-accent px-4 font-bold text-stone-900 hover:brightness-105 disabled:opacity-60"
             >
-              {autofill.isPending ? "Looking at your photo…" : "✨ Fill from photo"}
+              {autofill.isPending ? t("Looking at your photo…") : `✨ ${t("Fill from photo")}`}
             </button>
             {autofill.isSuccess && (
-              <p role="status" className="text-sm text-brand-dark">We filled in the details from your photo. Please check them, especially allergens, before posting.</p>
+              <p role="status" className="text-sm text-brand-dark">{t("We filled in the details from your photo. Please check them, especially allergens, before posting.")}</p>
             )}
             {autofill.isError && (
-              <p role="alert" className="text-sm text-red-800">{autofill.error instanceof Error ? autofill.error.message : "We couldn't read the photo just now. Please fill in the details yourself."}</p>
+              <p role="alert" className="text-sm text-red-800">{autofill.error instanceof Error ? autofill.error.message : t("We couldn't read the photo just now. Please fill in the details yourself.")}</p>
             )}
-            {!autofill.isSuccess && !autofill.isError && <p className="text-xs text-stone-500">Suggests the title, category, label, dietary tags and allergens from your first photo. You can change everything.</p>}
+            {!autofill.isSuccess && !autofill.isError && <p className="text-xs text-stone-500">{t("Suggests the title, category, label, dietary tags and allergens from your first photo. You can change everything.")}</p>}
           </div>
         )}
 
         <div>
-          <label className={labelCls} htmlFor="title">What is it?</label>
+          <label className={labelCls} htmlFor="title">{t("What is it?")}</label>
           <input id="title" className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={TEMPLATES[category].placeholder} maxLength={80} />
         </div>
 
         <fieldset>
-          <legend className={labelCls}>Category</legend>
+          <legend className={labelCls}>{t("Category")}</legend>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(CATEGORY) as Category[]).map((c) => (
               <button type="button" key={c} className={chipCls(category === c)} onClick={() => applyTemplate(c)} aria-pressed={category === c}>
@@ -275,7 +276,7 @@ export function ShareFood() {
         </fieldset>
 
         <fieldset>
-          <legend className={labelCls}>Label (required)</legend>
+          <legend className={labelCls}>{t("Label (required)")}</legend>
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(ORIGIN) as Origin[]).map((o) => (
               <button
@@ -289,12 +290,12 @@ export function ShareFood() {
               </button>
             ))}
           </div>
-          {origin === "homemade" && <p className="mt-1 text-xs text-stone-500">Homemade food stays on the map for up to 48 hours.</p>}
+          {origin === "homemade" && <p className="mt-1 text-xs text-stone-500">{t("Homemade food stays on the map for up to 48 hours.")}</p>}
         </fieldset>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls} htmlFor="bb">Best before (required)</label>
+            <label className={labelCls} htmlFor="bb">{t("Best before (required)")}</label>
             <input
               id="bb"
               type="date"
@@ -307,50 +308,50 @@ export function ShareFood() {
             />
           </div>
           <div>
-            <span className={labelCls}>Portions</span>
+            <span className={labelCls}>{t("Portions")}</span>
             <div className="flex items-center justify-between rounded-xl border border-stone-300 bg-white">
-              <button type="button" className="h-12 w-12 text-xl" onClick={() => setPortions((p) => Math.max(1, p - 1))} aria-label="Fewer portions">−</button>
+              <button type="button" className="h-12 w-12 text-xl" onClick={() => setPortions((p) => Math.max(1, p - 1))} aria-label={t("Fewer portions")}>−</button>
               <span className="text-base font-semibold" aria-live="polite">{portions}</span>
-              <button type="button" className="h-12 w-12 text-xl" onClick={() => setPortions((p) => Math.min(50, p + 1))} aria-label="More portions">+</button>
+              <button type="button" className="h-12 w-12 text-xl" onClick={() => setPortions((p) => Math.min(50, p + 1))} aria-label={t("More portions")}>+</button>
             </div>
           </div>
         </div>
 
         {editId ? (
-          <p className="text-xs text-stone-500">The pickup place stays the same. To move it, use Post again.</p>
+          <p className="text-xs text-stone-500">{t("The pickup place stays the same. To move it, use Post again.")}</p>
         ) : (
         <fieldset>
-          <legend className={labelCls}>Where</legend>
+          <legend className={labelCls}>{t("Where")}</legend>
           <div className="grid grid-cols-2 gap-2">
-            {([["home", "🏠 From my home"], ["fridge", "Drop at a community fridge"]] as const).map(([v, label]) => (
+            {([["home", `🏠 ${t("From my home")}`], ["fridge", t("Drop at a community fridge")]] as const).map(([v, label]) => (
               <button type="button" key={v} onClick={() => setPlace(v)} aria-pressed={place === v} className={`min-h-[52px] rounded-xl px-2 text-sm font-semibold ${place === v ? "bg-brand-dark text-white" : "bg-white ring-1 ring-stone-300"}`}>
                 {label}
               </button>
             ))}
           </div>
           {place === "home" ? (
-            <p className="mt-1 text-xs text-stone-500">Neighbours see only your area until you confirm their pickup.</p>
+            <p className="mt-1 text-xs text-stone-500">{t("Neighbours see only your area until you confirm their pickup.")}</p>
           ) : (
             <div className="mt-2">
-              <label className="sr-only" htmlFor="fridge">Community fridge</label>
+              <label className="sr-only" htmlFor="fridge">{t("Community fridge")}</label>
               <select id="fridge" className={inputCls} value={fridgeId} onChange={(e) => setFridgeId(e.target.value)}>
-                <option value="">Pick a fridge</option>
+                <option value="">{t("Pick a fridge")}</option>
                 {fridgesQ.data?.map((fr) => (
                   <option key={fr.id} value={fr.id}>{fr.name} · {fr.address}</option>
                 ))}
               </select>
-              {fridgesQ.data?.length === 0 && <p className="mt-1 text-xs text-stone-500">No approved fridges within 10 km of your home pin.</p>}
+              {fridgesQ.data?.length === 0 && <p className="mt-1 text-xs text-stone-500">{t("No approved fridges within 10 km of your home pin.")}</p>}
             </div>
           )}
         </fieldset>
         )}
 
         <fieldset>
-          <legend className={labelCls}>Pickup</legend>
+          <legend className={labelCls}>{t("Pickup")}</legend>
           <div className="flex flex-wrap gap-2">
             {editId && fromQ.data && (
               <button type="button" className={chipCls(windowIdx === -1)} onClick={() => setWindowIdx(-1)} aria-pressed={windowIdx === -1}>
-                Keep until {new Date(fromQ.data.pickupUntil).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+                {t("Keep until {time}", { time: new Date(fromQ.data.pickupUntil).toLocaleString(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" }) })}
               </button>
             )}
             {WINDOWS.map((w, i) => (
@@ -362,7 +363,7 @@ export function ShareFood() {
         </fieldset>
 
         <fieldset>
-          <legend className={labelCls}>Dietary</legend>
+          <legend className={labelCls}>{t("Dietary")}</legend>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(DIETARY) as DietaryTag[]).map((d) => {
               const on = dietary.includes(d);
@@ -376,12 +377,12 @@ export function ShareFood() {
         </fieldset>
 
         <details className="rounded-xl bg-white p-3 ring-1 ring-stone-200" open={!!sourceId}>
-          <summary className="cursor-pointer text-sm font-semibold text-stone-700">Description, allergens, weight and handover spot (optional)</summary>
-          <label className={`${labelCls} mt-3`} htmlFor="desc">Description</label>
-          <textarea id="desc" rows={2} maxLength={500} className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Anything neighbours should know: ingredients, how it was stored…" />
-          <label className={`${labelCls} mt-3`} htmlFor="weight">About how much does it weigh? (kg)</label>
-          <input id="weight" type="number" inputMode="decimal" min={0.05} max={50} step={0.1} className={inputCls} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 0.8" />
-          <span className={`${labelCls} mt-3`}>Allergens</span>
+          <summary className="cursor-pointer text-sm font-semibold text-stone-700">{t("Description, allergens, weight and handover spot (optional)")}</summary>
+          <label className={`${labelCls} mt-3`} htmlFor="desc">{t("Description")}</label>
+          <textarea id="desc" rows={2} maxLength={500} className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("Anything neighbours should know: ingredients, how it was stored…")} />
+          <label className={`${labelCls} mt-3`} htmlFor="weight">{t("About how much does it weigh? (kg)")}</label>
+          <input id="weight" type="number" inputMode="decimal" min={0.05} max={50} step={0.1} className={inputCls} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder={t("e.g. 0.8")} />
+          <span className={`${labelCls} mt-3`}>{t("Allergens")}</span>
           <div className="flex flex-wrap gap-2">
             {ALLERGENS.map((a) => {
               const on = allergens.includes(a);
@@ -393,17 +394,17 @@ export function ShareFood() {
                   aria-pressed={on}
                   onClick={() => setAllergens((xs) => (on ? xs.filter((x) => x !== a) : [...xs, a]))}
                 >
-                  {a.charAt(0).toUpperCase() + a.slice(1)}
+                  {allergenLabel(a)}
                 </button>
               );
             })}
           </div>
-          <label className={`${labelCls} mt-4`} htmlFor="spot">Public handover spot</label>
-          <input id="spot" className={inputCls} value={handoverSpot} onChange={(e) => setHandoverSpot(e.target.value)} placeholder="e.g. Bakery at the Hauptstraße corner" maxLength={120} />
+          <label className={`${labelCls} mt-4`} htmlFor="spot">{t("Public handover spot")}</label>
+          <input id="spot" className={inputCls} value={handoverSpot} onChange={(e) => setHandoverSpot(e.target.value)} placeholder={t("e.g. Bakery at the Hauptstraße corner")} maxLength={120} />
         </details>
 
         <fieldset className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
-          <legend className="px-1 text-sm font-bold text-stone-800">Safety checklist</legend>
+          <legend className="px-1 text-sm font-bold text-stone-800">{t("Safety checklist")}</legend>
           {CHECKS.map((c) => (
             <label key={c.key} className="flex min-h-[44px] cursor-pointer items-center gap-3">
               <input
@@ -419,11 +420,11 @@ export function ShareFood() {
 
         <ErrorNote error={m.error} />
         <button className={primaryBtn} disabled={!ready || !editable || m.isPending}>
-          {editId ? (m.isPending ? "Saving…" : "Save changes") : m.isPending ? "Posting…" : "Post to the map"}
+          {editId ? (m.isPending ? t("Saving…") : t("Save changes")) : m.isPending ? t("Posting…") : t("Post to the map")}
         </button>
         {!ready && (
           <p className="text-center text-xs text-stone-500">
-            Needs a photo, a title, a label, a date and all three safety ticks.
+            {t("Needs a photo, a title, a label, a date and all three safety ticks.")}
           </p>
         )}
       </form>

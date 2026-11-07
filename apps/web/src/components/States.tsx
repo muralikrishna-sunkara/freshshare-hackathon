@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+import { t } from "../i18n";
 import { Link } from "react-router-dom";
 
 export function Skeleton({ rows = 3, className = "h-20" }: { rows?: number; className?: string }) {
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+    <div className="space-y-3" aria-busy="true" aria-label={t("Loading")}>
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className={`${className} animate-pulse rounded-2xl bg-stone-200`} />
       ))}
