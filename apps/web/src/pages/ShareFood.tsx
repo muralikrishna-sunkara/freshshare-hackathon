@@ -5,6 +5,7 @@ import { createListing, fetchFridges, fetchListing, type Category, type DietaryT
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { CATEGORY, DIETARY, ORIGIN } from "../lib/format";
+import {  } from "../components/FridgeIcon";
 
 const MAX_PHOTOS = 4;
 
@@ -261,7 +262,7 @@ export function ShareFood() {
         <fieldset>
           <legend className={labelCls}>Where</legend>
           <div className="grid grid-cols-2 gap-2">
-            {([["home", "🏠 From my home"], ["fridge", "🧊 Drop at a community fridge"]] as const).map(([v, label]) => (
+            {([["home", "🏠 From my home"], ["fridge", "Drop at a community fridge"]] as const).map(([v, label]) => (
               <button type="button" key={v} onClick={() => setPlace(v)} aria-pressed={place === v} className={`min-h-[52px] rounded-xl px-2 text-sm font-semibold ${place === v ? "bg-brand-dark text-white" : "bg-white ring-1 ring-stone-300"}`}>
                 {label}
               </button>

@@ -43,6 +43,7 @@ export async function cleanTestUsers(prisma: PrismaClient) {
     prisma.notification.deleteMany({ where: { OR: [{ userId: { in: users } }, { listingId: { in: listings } }] } }),
     prisma.alertSubscription.deleteMany({ where: { userId: { in: users } } }),
     prisma.pushSubscription.deleteMany({ where: { userId: { in: users } } }),
+    prisma.passwordReset.deleteMany({ where: { userId: { in: users } } }),
     prisma.listingSchedule.deleteMany({ where: { userId: { in: users } } }),
     prisma.block.deleteMany({ where: { OR: [{ blockerId: { in: users } }, { blockedId: { in: users } }] } }),
     prisma.listingWaitlist.deleteMany({ where: { OR: [{ userId: { in: users } }, { listingId: { in: listings } }] } }),

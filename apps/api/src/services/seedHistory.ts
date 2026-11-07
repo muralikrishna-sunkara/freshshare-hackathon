@@ -21,7 +21,7 @@ export interface PhotoInfo {
 const V = ["vegan", "vegetarian"];
 const VG = ["vegan", "vegetarian", "gluten_free", "lactose_free", "nut_free"];
 
-/** Every kit photo with titles that match what it shows. */
+/** Kit photos with titles that match what they show. Left out because they are hard to read at card size: coconut milk, coffee, lentil soup, mint tea. */
 export const PHOTOS: Record<string, PhotoInfo> = {
   "apples.jpg": { titles: ["Bag of apples from our tree", "Cooking apples, about 2 kg"], category: "fruit_veg", origin: "fresh_produce", dietary: VG, allergens: [], kg: [1, 3], portions: [4, 8] },
   "bananas.jpg": { titles: ["Ripe bananas, great for baking", "Bananas, a bit spotty"], category: "fruit_veg", origin: "fresh_produce", dietary: VG, allergens: [], kg: [0.5, 1.5], portions: [3, 6] },
@@ -29,8 +29,6 @@ export const PHOTOS: Record<string, PhotoInfo> = {
   "cheddar.jpg": { titles: ["Cheese, half a block", "Swiss-style cheese, 300 g"], category: "dairy", origin: "packaged", dietary: ["vegetarian", "gluten_free"], allergens: ["milk"], kg: [0.3, 0.5], portions: [2, 4] },
   "chicken.jpg": { titles: ["Roast chicken, cooked today", "Roast chicken leftovers, 2 portions"], category: "leftovers", origin: "homemade", dietary: ["gluten_free", "lactose_free"], allergens: [], kg: [0.6, 1.2], portions: [2, 3] },
   "chickpeas.jpg": { titles: ["Dried pulses, 500 g bag", "Dried green lentils, sealed bag"], category: "packaged", origin: "packaged", dietary: VG, allergens: [], kg: [0.5, 1], portions: [4, 6] },
-  "coconut-milk.jpg": { titles: ["Coconut milk, 2 tins", "Coconut cream, unopened"], category: "packaged", origin: "packaged", dietary: VG, allergens: [], kg: [0.4, 0.8], portions: [2, 4] },
-  "coffee.jpg": { titles: ["Ground coffee, half a pack", "Ground coffee, 250 g"], category: "other", origin: "packaged", dietary: VG, allergens: [], kg: [0.3, 0.5], portions: [1, 1] },
   "croissants.jpg": { titles: ["Butter croissants from the bakery", "Croissants, end of day"], category: "bread", origin: "packaged", dietary: ["vegetarian"], allergens: ["gluten", "milk", "eggs"], kg: [0.3, 0.6], portions: [3, 6] },
   "granola.jpg": { titles: ["Overnight oats with fruit, 2 bowls", "Muesli bowls with banana and blueberries"], category: "leftovers", origin: "homemade", dietary: V, allergens: ["gluten"], kg: [0.4, 0.8], portions: [2, 2] },
   "hummus.jpg": { titles: ["Homemade hummus", "Hummus, a big bowl"], category: "leftovers", origin: "homemade", dietary: ["vegan", "vegetarian", "gluten_free", "lactose_free"], allergens: ["sesame"], kg: [0.3, 0.6], portions: [3, 5] },
@@ -41,10 +39,8 @@ export const PHOTOS: Record<string, PhotoInfo> = {
   "pasta.jpg": { titles: ["Vegetable lasagne, 4 portions", "Pasta bake leftovers"], category: "leftovers", origin: "homemade", dietary: ["vegetarian"], allergens: ["gluten", "milk"], kg: [0.8, 1.6], portions: [2, 4] },
   "rolls.jpg": { titles: ["Bread rolls from this morning", "Six bread rolls"], category: "bread", origin: "packaged", dietary: V, allergens: ["gluten"], kg: [0.3, 0.6], portions: [3, 6] },
   "salad.jpg": { titles: ["Romaine lettuce from the garden", "Lettuce heads, 3 pieces"], category: "fruit_veg", origin: "fresh_produce", dietary: VG, allergens: [], kg: [0.3, 1], portions: [2, 4] },
-  "soup.jpg": { titles: ["Lentil soup, 3 portions", "Lentil soup (yesterday)"], category: "leftovers", origin: "homemade", dietary: ["vegan", "vegetarian", "lactose_free"], allergens: ["celery"], kg: [0.8, 1.5], portions: [2, 4] },
   "sourdough.jpg": { titles: ["Sourdough loaf, baked yesterday", "Half a sourdough loaf"], category: "bread", origin: "homemade", dietary: V, allergens: ["gluten"], kg: [0.4, 1], portions: [3, 6] },
   "sweetcorn.jpg": { titles: ["Sweetcorn tins, unopened", "Sweetcorn, 3 tins"], category: "packaged", origin: "packaged", dietary: VG, allergens: [], kg: [0.4, 1.2], portions: [2, 6] },
-  "tea.jpg": { titles: ["Fresh mint from the garden, a big bunch", "Fresh mint for tea"], category: "fruit_veg", origin: "fresh_produce", dietary: VG, allergens: [], kg: [0.1, 0.3], portions: [2, 4] },
   "tinned-tomatoes.jpg": { titles: ["Ripe tomatoes from the garden", "Tomatoes, about 1 kg"], category: "fruit_veg", origin: "fresh_produce", dietary: VG, allergens: [], kg: [0.5, 1.5], portions: [3, 6] },
   "turkey.jpg": { titles: ["Sliced cooked turkey, sealed pack", "Cooked turkey slices"], category: "packaged", origin: "packaged", dietary: ["gluten_free", "lactose_free"], allergens: [], kg: [0.2, 0.4], portions: [2, 3] },
   "yoghurt.jpg": { titles: ["Natural yoghurt, 500 g", "Yoghurt, best before tomorrow"], category: "dairy", origin: "packaged", dietary: ["vegetarian", "gluten_free"], allergens: ["milk"], kg: [0.5, 1], portions: [2, 4] },

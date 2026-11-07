@@ -6,6 +6,7 @@ import { AppHeader } from "../components/AppHeader";
 import { Footer } from "../components/Footer";
 import { ErrorNote, inputCls, labelCls } from "../components/Page";
 import { useMe } from "../hooks/useMe";
+import { FridgeIcon } from "../components/FridgeIcon";
 
 const UN_SOURCE = "https://unstats.un.org/sdgs/report/2026/goal-12";
 const DE_SOURCE = "https://www.bmleh.de/EN/topics/food-and-nutrition/food-waste/food-waste-latest-figures.html";
@@ -81,12 +82,12 @@ function Hero() {
           </div>
         </div>
         <ul className="grid grid-cols-2 gap-3 text-sm">
-          {[
+          {([
             ["📷", "Photo + best-before date on every listing"],
             ["🗺️", "Map of food within 2 km"],
-            ["🧊", "Community fridges on the same map"],
+            [<FridgeIcon className="h-7 w-7" />, "Community fridges on the same map"],
             ["✅", "Verified givers with star ratings"],
-          ].map(([icon, text]) => (
+          ] as [ReactNode, string][]).map(([icon, text]) => (
             <li key={text} className="rounded-2xl bg-white/10 p-4">
               <span className="text-2xl" aria-hidden>{icon}</span>
               <p className="mt-2 font-semibold">{text}</p>
@@ -186,9 +187,9 @@ function WhoFor() {
     ["🏠", "Households", "Leftovers, too many apples, a fridge to clear before holidays."],
     ["🙋", "Receivers", "Students, families, anyone who'd rather eat it than see it binned."],
     ["🥐", "Shops and cafés", "End-of-day bread and pastries, short-dated stock."],
-    ["🧊", "Community fridges", "Show up on the map with opening hours and how full they are."],
+    [<FridgeIcon className="h-7 w-7 text-brand-dark" />, "Community fridges", "Show up on the map with opening hours and how full they are."],
     ["🤝", "Food banks and NGOs", "Collect several listings in one pickup run."],
-  ];
+  ] as [ReactNode, string, string][];
   return (
     <Section title="Who it's for">
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

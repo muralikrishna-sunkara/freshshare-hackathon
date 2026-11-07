@@ -436,3 +436,7 @@ export const createSchedule = (b: { fromListingId: string; daysOfWeek: number[];
 export const updateSchedule = (id: string, b: Partial<Pick<Schedule, "active" | "daysOfWeek" | "time" | "pickupHours" | "portions">>) =>
   api<{ schedule: Schedule }>(`/schedules/${id}`, { ...json(b), method: "PATCH" }).then((r) => r.schedule);
 export const deleteSchedule = (id: string) => fetch(`/api/schedules/${id}`, { method: "DELETE", credentials: "include" });
+
+// Password reset
+export const forgotPassword = (email: string) => api<{ ok: true; message: string }>("/auth/forgot", json({ email }));
+export const resetPassword = (token: string, password: string) => api<{ user: Me }>("/auth/reset", json({ token, password })).then((r) => r.user);

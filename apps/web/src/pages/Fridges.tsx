@@ -12,6 +12,7 @@ import { Empty, Skeleton, Success } from "../components/States";
 import { DEMO_CENTRE, useLocation } from "../hooks/useLocation";
 import { useMe } from "../hooks/useMe";
 import { FILL, formatDistance, FRIDGE_KIND, timeAgo } from "../lib/format";
+import { FridgeIcon, fridgeSvg } from "../components/FridgeIcon";
 
 const RADIUS = 10000;
 
@@ -19,7 +20,7 @@ const fridgeIcon = L.divIcon({
   className: "",
   iconSize: [32, 32],
   iconAnchor: [16, 16],
-  html: `<div style="width:32px;height:32px;border-radius:9px;background:#fff;border:2.5px solid #1f4337;display:flex;align-items:center;justify-content:center;font-size:17px">🧊</div>`,
+  html: `<div style="width:32px;height:32px;border-radius:9px;background:#fff;border:2.5px solid #1f4337;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3)">${fridgeSvg(20)}</div>`,
 });
 
 function FillBadge({ f }: { f: Fridge }) {
@@ -57,7 +58,7 @@ export function FridgesPage() {
           {fridges.map((f) => (
             <Link key={f.id} to={`/fridges/${f.id}`} className="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-stone-200 hover:ring-brand">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand-light text-3xl">
-                {f.photoUrl ? <img src={f.photoUrl} alt="" className="h-full w-full object-cover" loading="lazy" /> : FRIDGE_KIND[f.kind ?? "fridge"].emoji}
+                {f.photoUrl ? <img src={f.photoUrl} alt="" className="h-full w-full object-cover" loading="lazy" /> : (f.kind ?? "fridge") === "fridge" ? <FridgeIcon className="h-7 w-7 text-brand-dark" /> : FRIDGE_KIND[f.kind ?? "fridge"].emoji}
               </div>
               <div className="min-w-0 space-y-1">
                 <p className="text-xs font-semibold text-stone-500">{FRIDGE_KIND[f.kind ?? "fridge"].label} · {formatDistance(f.distanceM)} away</p>
@@ -114,7 +115,7 @@ export function FridgePage() {
         <div className="space-y-4">
           {f.photoUrl && <img src={f.photoUrl} alt={f.name} className="aspect-[4/3] w-full rounded-2xl object-cover" />}
           <section className="space-y-1 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
-            <p className="text-sm font-semibold text-brand-dark">{kind.emoji} {kind.label}</p>
+            <p className="text-sm font-semibold text-brand-dark">{f.kind === "fridge" ? <FridgeIcon className="mr-1 h-4 w-4 align-[-3px]" /> : `${kind.emoji} `}{kind.label}</p>
             <p>{f.address}</p>
             <p className="text-sm text-stone-600">Open: {f.openingHours}</p>
             {f.description && <p className="pt-2 text-stone-700">{f.description}</p>}
@@ -225,7 +226,7 @@ export function SuggestFridgePage() {
     return (
       <Page title="Suggest a fridge">
         <div className="space-y-3 rounded-2xl bg-white p-6 text-center ring-1 ring-stone-200">
-          <p className="text-3xl" aria-hidden>🧊</p>
+          <FridgeIcon className="mx-auto h-9 w-9 text-brand-dark" />
           <p className="text-lg font-bold">{m.data.message}</p>
           <p className="text-stone-600">It's pending for now. You can already see it on its page.</p>
           <Link to={`/fridges/${m.data.fridge.id}`} className="inline-block font-semibold text-brand-dark underline">Open the fridge page</Link>

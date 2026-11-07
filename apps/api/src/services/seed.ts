@@ -74,6 +74,7 @@ export async function runSeed(
     prisma.notification.deleteMany(),
     prisma.alertSubscription.deleteMany(),
     prisma.pushSubscription.deleteMany(),
+    prisma.passwordReset.deleteMany(),
     prisma.listingSchedule.deleteMany(),
     prisma.block.deleteMany(),
     prisma.listingWaitlist.deleteMany(),
@@ -112,7 +113,16 @@ export async function runSeed(
   // Same pipeline as real uploads (EXIF stripped, 1600 px WebP). Each source photo is uploaded once per run
   // to seed/<name>.webp and shared by every listing that uses it.
   const toWebp = async (file: string) =>
-    sharp(await readFile(path.join(dir, "seed-photos", file))).rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+    // Demo photos get a light clean-up so they read well as small cards: 4:3 crop on the subject, a touch more
+    // colour and contrast, and sharpening after the resize.
+    sharp(await readFile(path.join(dir, "seed-photos", file)))
+      .rotate()
+      .resize(1200, 900, { fit: "cover", position: sharp.strategy.attention })
+      .modulate({ brightness: 1.03, saturation: 1.15 })
+      .linear(1.06, -6)
+      .sharpen({ sigma: 0.8 })
+      .webp({ quality: 84 })
+      .toBuffer();
   const uploaded = new Map<string, Promise<string>>();
   const photoUrl = (file: string) => {
     if (!uploaded.has(file)) uploaded.set(file, toWebp(file).then((buf) => storage.put(`seed/${file.replace(/\.\w+$/, "")}.webp`, buf, "image/webp")));

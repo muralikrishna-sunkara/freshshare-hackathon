@@ -4,6 +4,7 @@ import { checkInFridge, type Fridge, type FridgeState } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { formatDistance, timeAgo } from "../lib/format";
 import { ErrorNote } from "./Page";
+import { FridgeIcon } from "./FridgeIcon";
 
 const STATE: Record<FridgeState, { label: string; tone: string; emoji: string }> = {
   stocked: { label: "Stocked", tone: "bg-brand-light text-brand-dark", emoji: "✅" },
@@ -26,7 +27,7 @@ export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
         </div>
       )}
       <div className="space-y-2 px-4">
-        <span className="inline-flex rounded-full bg-brand-light px-2.5 py-1 text-xs font-semibold text-brand-dark">🧊 Community fridge</span>
+        <span className="inline-flex rounded-full bg-brand-light px-2.5 py-1 text-xs font-semibold text-brand-dark"><FridgeIcon className="mr-1 h-3.5 w-3.5" />Community fridge</span>
         <h2 className="text-xl font-bold">{f.name}</h2>
         <p className="text-sm text-stone-600">{f.address} · {formatDistance(f.distanceM)} away</p>
         <p className="text-sm text-stone-600">Open: {f.openingHours}</p>

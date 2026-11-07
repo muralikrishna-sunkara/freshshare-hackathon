@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { COOKIE, cookieOptions, requireAuth, signToken, suspendedError, userId } from "../lib/auth.js";
@@ -8,6 +9,8 @@ import { prisma } from "../lib/prisma.js";
 import { authLimiter } from "../lib/rateLimit.js";
 import { TERMS_VERSION } from "../services/rules.js";
 import { meView } from "../services/users.js";
+import { renderEmail, sendEmail } from "../lib/email.js";
+import { logger } from "../lib/logger.js";
 
 export const auth = Router();
 export const me = Router();
@@ -69,6 +72,63 @@ auth.post(
     if (user.suspendedAt) throw suspendedError(user.suspendedReason);
     res.cookie(COOKIE, signToken(user.id), cookieOptions(req));
     res.json({ user: await meView(user) });
+  }),
+);
+
+export const RESET_TTL_MS = 60 * 60_000;
+const sha256 = (t: string) => createHash("sha256").update(t).digest("hex");
+
+/**
+ * Forgot password: emails a one-hour, single-use link. Always answers the same way, so it can't be used
+ * to find out who has an account.
+ */
+auth.post(
+  "/forgot",
+  authLimiter,
+  ah(async (req, res) => {
+    const { email } = z.object({ email: z.string().trim().toLowerCase().email("Please enter a valid email") }).parse(req.body);
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user && !user.suspendedAt) {
+      const token = randomBytes(32).toString("base64url");
+      await prisma.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } });
+      await prisma.passwordReset.create({ data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + RESET_TTL_MS) } });
+      const link = `/reset-password?token=${token}`;
+      const { text, html } = renderEmail({
+        title: "Reset your FreshShare password",
+        body: `Hi ${user.name.split(" ")[0]}, someone (hopefully you) asked to reset your password. The link works once, for one hour. If it wasn't you, ignore this email: your password stays the same.`,
+        link,
+        cta: "Choose a new password",
+        transactional: "You get this because a password reset was requested for your FreshShare account.",
+      });
+      const sent = await sendEmail({ to: user.email, subject: "Reset your FreshShare password", text, html });
+      if (!sent) logger.warn({ userId: user.id }, "password reset email not sent");
+    }
+    res.json({ ok: true, message: "If an account exists for that email, we've sent a link to reset the password." });
+  }),
+);
+
+const resetBody = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(8, "Use at least 8 characters").max(200),
+});
+
+/** Sets the new password from a reset link and signs the person in. */
+auth.post(
+  "/reset",
+  authLimiter,
+  ah(async (req, res) => {
+    const b = resetBody.parse(req.body);
+    const r = await prisma.passwordReset.findUnique({ where: { tokenHash: sha256(b.token) } });
+    if (!r || r.usedAt || r.expiresAt < new Date()) throw new HttpError(400, "invalid_token", "This reset link has expired or was already used. Ask for a new one.");
+    const user = await prisma.user.findUnique({ where: { id: r.userId } });
+    if (!user) throw new HttpError(400, "invalid_token", "This reset link has expired or was already used. Ask for a new one.");
+    if (user.suspendedAt) throw suspendedError(user.suspendedReason);
+    const used = await prisma.passwordReset.updateMany({ where: { id: r.id, usedAt: null }, data: { usedAt: new Date() } });
+    if (used.count === 0) throw new HttpError(400, "invalid_token", "This reset link has expired or was already used. Ask for a new one.");
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(b.password, BCRYPT_COST) } });
+    await prisma.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } });
+    res.cookie(COOKIE, signToken(user.id), cookieOptions(req));
+    res.json({ user: await meView(updated) });
   }),
 );
 

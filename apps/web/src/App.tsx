@@ -16,6 +16,7 @@ import { ShareFood } from "./pages/ShareFood";
 import { SignIn } from "./pages/SignIn";
 import { SignUp } from "./pages/SignUp";
 import { RecurringPage } from "./pages/Recurring";
+import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordReset";
 
 export function App() {
   return (
@@ -43,6 +44,8 @@ export function App() {
         <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
           path="/share"
           element={
