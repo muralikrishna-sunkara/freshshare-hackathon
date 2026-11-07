@@ -8,6 +8,7 @@ import {
   fetchOrganizations, fetchOrgDashboard, inviteMember, registerOrganization, removeMember, type OrgRole, type OrgType,
 } from "../api/client";
 import { LocationPicker } from "../components/LocationPicker";
+import { OrgImpactPanel } from "../components/ImpactPanel";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { Empty, Skeleton, Success } from "../components/States";
 import { DEMO_CENTRE } from "../hooks/useLocation";
@@ -91,6 +92,9 @@ export function OrganizationPage() {
             <Marker position={[o.lat, o.lng]} icon={orgIcon} />
           </MapContainer>
         </div>
+      </div>
+      <div className="mt-6">
+        <OrgImpactPanel orgId={o.id} member={!!o.myRole} />
       </div>
     </Page>
   );
@@ -201,6 +205,7 @@ export function OrgDashboardPage() {
               <p className="text-xs text-stone-600">Team members</p>
             </div>
           </div>
+          <OrgImpactPanel orgId={id} member />
           <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="font-bold">Pickup runs</h2>

@@ -1,14 +1,18 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ah } from "../lib/errors.js";
+import { isAdmin, requireAuth, userId } from "../lib/auth.js";
+import { ah, HttpError } from "../lib/errors.js";
+import { renderImpactCard } from "../lib/impactCard.js";
 import { distanceM } from "../lib/geo.js";
 import { prisma } from "../lib/prisma.js";
+import { CO2E_PER_KG, factors, KG_PER_PORTION, orgImpact, userImpact } from "../services/impact.js";
+import { renderOrgReport } from "../services/impactReport.js";
+import { requireOrgRole } from "../services/orgs.js";
 import { TEST_EMAIL_SUFFIX } from "../services/rules.js";
 
 export const impact = Router();
 
-export const KG_PER_PORTION = 0.4; // estimate, labelled as such in the UI
-export const CO2E_PER_KG = 2.5; // kg CO2e avoided per kg of food not wasted (kit PRODUCT.md)
+export { CO2E_PER_KG, KG_PER_PORTION };
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 const kg = (portions: number) => Math.round(portions * KG_PER_PORTION * 10) / 10;
 
@@ -74,5 +78,100 @@ impact.get(
       organizations,
       estimate: true,
     });
+  }),
+);
+
+// ---------- Personal and organization impact (T3.2) ----------
+
+const idParam = z.string().min(1).max(40);
+const monthYear = (d: Date) => d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+
+async function userOr404(id: string) {
+  const u = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+  if (!u) throw new HttpError(404, "not_found", "Person not found");
+}
+
+/** Anyone's impact (aggregates only, like the public profile): meals, kg, CO2e and water, given and received. */
+impact.get(
+  "/users/:id",
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    await userOr404(id);
+    res.json({ ...(await userImpact(id)), factors, estimate: true });
+  }),
+);
+
+/** Shareable 1200x630 PNG for a person (also used as the Open Graph image). */
+impact.get(
+  "/users/:id/card.png",
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    await userOr404(id);
+    const i = await userImpact(id);
+    const png = await renderImpactCard({
+      headline: "Sharing food with neighbours on FreshShare",
+      name: i.user.name,
+      meals: i.total.meals,
+      kg: i.total.kg,
+      co2Kg: i.total.co2Kg,
+      waterL: i.total.waterL,
+      footnote: `Member since ${monthYear(i.user.memberSince)}`,
+    });
+    res.set({ "Content-Type": "image/png", "Cache-Control": "public, max-age=600" }).send(png);
+  }),
+);
+
+/** Organizations: approved ones are public; a pending one only to its members and site admins. */
+async function visibleOrg(id: string, viewer: string | undefined) {
+  const org = await prisma.organization.findUnique({ where: { id }, select: { status: true } });
+  if (!org) throw new HttpError(404, "not_found", "Organization not found");
+  if (org.status === "approved" || (await isAdmin(viewer))) return;
+  await requireOrgRole(id, viewer);
+}
+
+impact.get(
+  "/organizations/:id",
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    await visibleOrg(id, req.user?.id);
+    res.json({ ...(await orgImpact(id)), factors, estimate: true });
+  }),
+);
+
+impact.get(
+  "/organizations/:id/card.png",
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    await visibleOrg(id, req.user?.id);
+    const i = await orgImpact(id);
+    const png = await renderImpactCard({
+      headline: "Rescuing food with FreshShare",
+      name: i.organization.name,
+      meals: i.total.meals,
+      kg: i.total.kg,
+      co2Kg: i.total.co2Kg,
+      waterL: i.total.waterL,
+      footnote: `${i.pickupRuns} pickup runs`,
+    });
+    res.set({ "Content-Type": "image/png", "Cache-Control": "public, max-age=600" }).send(png);
+  }),
+);
+
+/** One-page PDF report for funders and boards. Members of the organization (any role) and site admins. */
+impact.get(
+  "/organizations/:id/report.pdf",
+  requireAuth,
+  ah(async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    const me = userId(req);
+    if (!(await isAdmin(me))) await requireOrgRole(id, me);
+    const data = await orgImpact(id);
+    const pdf = await renderOrgReport(data);
+    const slug = data.organization.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "organization";
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="freshshare-impact-${slug}.pdf"`,
+      "Cache-Control": "no-store",
+    }).send(pdf);
   }),
 );

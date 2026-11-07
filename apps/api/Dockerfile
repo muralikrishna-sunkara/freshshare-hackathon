@@ -1,6 +1,7 @@
 # Build context: repo root.  docker build -f apps/api/Dockerfile .
 FROM node:20-bookworm-slim AS base
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+# fonts-dejavu-core: sharp renders the impact share cards (SVG text) with it
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates fonts-dejavu-core fontconfig \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 

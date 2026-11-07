@@ -353,3 +353,39 @@ export interface AppNotification {
 export const fetchNotifications = () => api<{ notifications: AppNotification[]; unreadCount: number }>("/notifications");
 export const markNotificationRead = (id: string) => api<{ unreadCount: number }>(`/notifications/${id}/read`, { method: "POST" });
 export const markAllNotificationsRead = () => api<{ unreadCount: number }>("/notifications/read-all", { method: "POST" });
+
+export interface ImpactTotals4 {
+  meals: number;
+  kg: number;
+  co2Kg: number;
+  waterL: number;
+  pickups: number;
+}
+export interface ImpactMonth {
+  month: string;
+  label: string;
+  meals: number;
+  kg: number;
+}
+export interface UserImpact {
+  user: { id: string; name: string; memberSince: string };
+  total: ImpactTotals4;
+  given: ImpactTotals4;
+  received: ImpactTotals4;
+  listingsShared: number;
+  fridgeCheckIns: number;
+  monthly: ImpactMonth[];
+  factors: { kgPerPortion: number; co2ePerKg: number; waterLitresPerKg: number };
+}
+export interface OrgImpact {
+  organization: { id: string; name: string };
+  total: ImpactTotals4;
+  last12Months: ImpactTotals4;
+  pickupRuns: number;
+  giversHelped: number;
+  categories: { category: Category; meals: number }[];
+  monthly: ImpactMonth[];
+  factors: { kgPerPortion: number; co2ePerKg: number; waterLitresPerKg: number };
+}
+export const fetchUserImpact = (id: string) => api<UserImpact>(`/impact/users/${id}`);
+export const fetchOrgImpact = (id: string) => api<OrgImpact>(`/impact/organizations/${id}`);

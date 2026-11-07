@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { fetchImpact, fetchMyClaims, logout, updateProfile, verifyEmail, verifyPhone, type Me } from "../api/client";
+import { fetchMyClaims, logout, updateProfile, verifyEmail, verifyPhone, type Me } from "../api/client";
+import { UserImpactPanel } from "../components/ImpactPanel";
 import { LocationPicker } from "../components/LocationPicker";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { Stars } from "../components/Stars";
@@ -16,11 +17,6 @@ export function Profile() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const claims = useQuery({ queryKey: ["claims"], queryFn: fetchMyClaims });
-  const impact = useQuery({
-    queryKey: ["impact", "me", me.data?.id],
-    queryFn: () => fetchImpact(me.data!.homeLat, me.data!.homeLng, 2000),
-    enabled: !!me.data,
-  });
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const onUser = { onSuccess: (u: unknown) => qc.setQueryData(["me"], u) };
@@ -64,12 +60,7 @@ export function Profile() {
           ))}
         </section>
 
-        {impact.data?.me && (
-          <p className="rounded-xl bg-brand-light p-3 text-sm text-brand-dark">
-            🌱 You've helped save <strong>{impact.data.me.portionsGiven + impact.data.me.portionsReceived} portions</strong> (~{impact.data.me.kg} kg,
-            estimate at 0.4 kg per portion)
-          </p>
-        )}
+        <UserImpactPanel userId={u.id} own />
 
         {!u.verified && (
           <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
