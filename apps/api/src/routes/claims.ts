@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth, userId } from "../lib/auth.js";
 import { ah } from "../lib/errors.js";
 import { claimView, loadClaim, myClaims, transition } from "../services/claims.js";
+import { rateClaim } from "../services/ratings.js";
 
 export const claims = Router();
 claims.use(requireAuth);
@@ -35,3 +36,18 @@ for (const action of ["confirm", "collected", "cancel"] as const) {
     }),
   );
 }
+
+const ratingBody = z.object({
+  stars: z.number().int().min(1, "Pick 1 to 5 stars").max(5, "Pick 1 to 5 stars"),
+  note: z.string().trim().max(300).optional().transform((v) => (v ? v : null)),
+});
+
+claims.post(
+  "/:id/ratings",
+  ah(async (req, res) => {
+    const { id } = idParam.parse(req.params);
+    const b = ratingBody.parse(req.body);
+    const c = await rateClaim(id, userId(req), b.stars, b.note);
+    res.status(201).json({ claim: claimView(c, c.role) });
+  }),
+);

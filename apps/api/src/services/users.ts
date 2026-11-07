@@ -2,8 +2,9 @@ import type { User } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
 export async function meView(u: User) {
-  const [shared, received] = await Promise.all([
+  const [shared, given, received] = await Promise.all([
     prisma.listing.count({ where: { giverId: u.id, status: { not: "removed" } } }),
+    prisma.claim.count({ where: { listing: { giverId: u.id }, status: "collected" } }),
     prisma.claim.count({ where: { receiverId: u.id, status: "collected" } }),
   ]);
   return {
@@ -17,6 +18,6 @@ export async function meView(u: User) {
     verified: u.emailVerified && u.phoneVerified,
     ratingAvg: Math.round(u.ratingAvg * 10) / 10,
     ratingCount: u.ratingCount,
-    stats: { shared, received },
+    stats: { shared, given, received },
   };
 }

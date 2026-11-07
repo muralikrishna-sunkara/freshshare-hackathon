@@ -80,7 +80,7 @@ export interface Me {
   verified: boolean;
   ratingAvg: number;
   ratingCount: number;
-  stats: { shared: number; received: number };
+  stats: { shared: number; given: number; received: number };
 }
 
 const json = (body: unknown): RequestInit => ({
@@ -131,3 +131,10 @@ export const claimAction = (id: string, action: "confirm" | "collected" | "cance
   api<{ claim: Claim }>(`/claims/${id}/${action}`, { method: "POST" }).then((r) => r.claim);
 
 export const createListing = (form: FormData) => api<{ listing: Listing }>("/listings", { method: "POST", body: form }).then((r) => r.listing);
+
+export const rateClaim = (id: string, stars: number, note?: string) =>
+  api<{ claim: Claim }>(`/claims/${id}/ratings`, json({ stars, note })).then((r) => r.claim);
+
+// DEMO verification endpoints (code 123456)
+export const verifyPhone = (phone: string, code: string) => api<{ user: Me }>("/me/verify-phone", json({ phone, code })).then((r) => r.user);
+export const verifyEmail = () => api<{ user: Me }>("/me/verify-email", { method: "POST" }).then((r) => r.user);

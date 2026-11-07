@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { claimAction, fetchClaim, type Claim, type ClaimStatus } from "../api/client";
 import { GiverRow } from "../components/GiverRow";
 import { ListingCard } from "../components/ListingCard";
+import { RateForm } from "../components/RateForm";
 import { ErrorNote, Page, primaryBtn } from "../components/Page";
 import { formatTime } from "../lib/format";
 
@@ -55,6 +56,7 @@ export function ClaimPage() {
     <Page title="Pickup" back="/pickups">
       <div className="space-y-4">
         <p className={`rounded-xl p-3 text-sm font-semibold ${st.tone}`} role="status">{st.text}</p>
+        {c.status === "collected" && <RateForm claim={c} />}
 
         <div className="overflow-hidden rounded-2xl ring-1 ring-stone-200">
           <ListingCard listing={l} compact />

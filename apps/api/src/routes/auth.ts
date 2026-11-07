@@ -75,3 +75,32 @@ me.get(
     res.json({ user: await meView(user) });
   }),
 );
+
+// DEMO: no SMS or email provider on hackathon day. Code 123456 verifies the phone,
+// and the email step is a one-tap confirmation. Both are labelled DEMO in the UI.
+const DEMO_PHONE_CODE = "123456"; // DEMO
+const phoneBody = z.object({
+  phone: z.string().trim().regex(/^\+?[0-9 ()-]{6,20}$/, "Please enter a phone number"),
+  code: z.string().trim(),
+});
+
+me.post(
+  "/verify-phone",
+  requireAuth,
+  ah(async (req, res) => {
+    const b = phoneBody.parse(req.body);
+    if (b.code !== DEMO_PHONE_CODE) throw new HttpError(400, "wrong_code", "That code isn't right (DEMO code: 123456)"); // DEMO
+    const user = await prisma.user.update({ where: { id: userId(req) }, data: { phoneVerified: true } });
+    res.json({ user: await meView(user) });
+  }),
+);
+
+me.post(
+  "/verify-email",
+  requireAuth,
+  ah(async (req, res) => {
+    // DEMO: real email confirmation would send a link; here one tap marks it confirmed.
+    const user = await prisma.user.update({ where: { id: userId(req) }, data: { emailVerified: true } });
+    res.json({ user: await meView(user) });
+  }),
+);

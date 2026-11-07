@@ -1,7 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { fetchFridges, fetchListing, fetchNearby, logout, type Category, type Listing } from "../api/client";
+import { fetchFridges, fetchListing, fetchNearby, type Category, type Listing } from "../api/client";
 import { BottomSheet } from "../components/BottomSheet";
 import { ListingActions } from "../components/ListingActions";
 import { ListingCard } from "../components/ListingCard";
@@ -24,7 +24,6 @@ export function MapHome() {
   const [params, setParams] = useSearchParams();
   const focusId = params.get("listing");
   const nav = useNavigate();
-  const qc = useQueryClient();
   const me = useMe();
 
   // Deep link / just posted: open that listing and centre the map on it.
@@ -35,10 +34,6 @@ export function MapHome() {
   const closeSheet = () => {
     setSelected(null);
     if (focusId) setParams({}, { replace: true });
-  };
-  const signOut = async () => {
-    await logout();
-    qc.setQueryData(["me"], null);
   };
 
   const listingsQ = useQuery({
@@ -81,13 +76,13 @@ export function MapHome() {
             </Link>
           )}
           {me.data ? (
-            <button
-              onClick={signOut}
-              title={`Signed in as ${me.data.name}. Tap to sign out.`}
+            <Link
+              to="/profile"
+              aria-label={`Profile of ${me.data.name}`}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white"
             >
               {me.data.name.charAt(0)}
-            </button>
+            </Link>
           ) : (
             <Link to="/signin" className="min-h-[40px] rounded-full px-2 py-2 text-sm font-semibold text-brand-dark">
               Sign in

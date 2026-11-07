@@ -12,3 +12,6 @@
 - 2026-11-07: Auth cookie `secure` follows the request scheme (`trust proxy` + ALB `X-Forwarded-Proto`), so sign-in also works on the plain-HTTP ALB URL before HTTPS is live.
 - 2026-11-07: Homemade food is hidden from the map 48 h after posting (query filter) instead of clamping its best-before date, so the date shown stays the giver's real date.
 - 2026-11-07: New accounts start unverified (no SMTP on the day); the DEMO phone step comes in Block 6.
+- 2026-11-07: New ratings update the rated user's average incrementally (avg × count + stars) so seeded rating history is kept.
+- 2026-11-07: Verified badge needs email + phone. Both steps are DEMO today: phone accepts code 123456, email is a one-tap confirm (no SMS or SMTP provider). Labelled DEMO in code and UI.
+- 2026-11-07: The Playwright demo-path test (`npm run e2e`) runs locally or against `BASE_URL`; it is not wired into the deploy workflow yet because CI would need the full stack running (Block 7 follow-up).
