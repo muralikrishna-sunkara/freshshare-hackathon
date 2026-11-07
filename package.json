@@ -17,9 +17,14 @@
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
     "db:clean-test": "npm run db:clean-test -w apps/api",
-    "e2e": "playwright test --trace off"
+    "e2e": "playwright test --trace off",
+    "demo:video": "tsx demo/video.ts",
+    "demo:reset": "tsx demo/reset.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0"
+    "@playwright/test": "^1.63.0",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
+    "msedge-tts": "^2.1.1"
   }
 }
