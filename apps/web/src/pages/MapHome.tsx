@@ -1,10 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { fetchFridges, fetchNearby, type Category, type Listing } from "../api/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { fetchFridges, fetchListing, fetchNearby, logout, type Category, type Listing } from "../api/client";
 import { BottomSheet } from "../components/BottomSheet";
+import { ListingActions } from "../components/ListingActions";
 import { ListingCard } from "../components/ListingCard";
 import { ListingMap } from "../components/ListingMap";
 import { useLocation } from "../hooks/useLocation";
+import { useMe } from "../hooks/useMe";
 import { CATEGORY, formatDistance } from "../lib/format";
 
 const RADII = [500, 1000, 2000] as const;
@@ -18,6 +21,25 @@ export function MapHome() {
   const [category, setCategory] = useState<Category | undefined>();
   const [view, setView] = useState<"map" | "list">("map");
   const [selected, setSelected] = useState<Listing | null>(null);
+  const [params, setParams] = useSearchParams();
+  const focusId = params.get("listing");
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const me = useMe();
+
+  // Deep link / just posted: open that listing and centre the map on it.
+  const focusQ = useQuery({ queryKey: ["listing", focusId], queryFn: () => fetchListing(focusId!), enabled: !!focusId });
+  useEffect(() => {
+    if (focusQ.data) setSelected(focusQ.data);
+  }, [focusQ.data]);
+  const closeSheet = () => {
+    setSelected(null);
+    if (focusId) setParams({}, { replace: true });
+  };
+  const signOut = async () => {
+    await logout();
+    qc.setQueryData(["me"], null);
+  };
 
   const listingsQ = useQuery({
     queryKey: ["listings", loc.lat, loc.lng, radius, category],
@@ -39,6 +61,7 @@ export function MapHome() {
           <h1 className="text-xl font-extrabold tracking-tight text-brand-dark">
             Fresh<span className="text-accent">Share</span>
           </h1>
+          <div className="flex items-center gap-2">
           <div className="flex rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist">
             {(["map", "list"] as const).map((v) => (
               <button
@@ -51,6 +74,25 @@ export function MapHome() {
                 {v}
               </button>
             ))}
+          </div>
+          {me.data && (
+            <Link to="/pickups" className="flex h-10 items-center rounded-full px-2 text-sm font-semibold text-brand-dark" aria-label="My pickups">
+              Pickups
+            </Link>
+          )}
+          {me.data ? (
+            <button
+              onClick={signOut}
+              title={`Signed in as ${me.data.name}. Tap to sign out.`}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-sm font-bold text-white"
+            >
+              {me.data.name.charAt(0)}
+            </button>
+          ) : (
+            <Link to="/signin" className="min-h-[40px] rounded-full px-2 py-2 text-sm font-semibold text-brand-dark">
+              Sign in
+            </Link>
+          )}
           </div>
         </div>
         {/* TODO(Block 10): real impact numbers from GET /api/impact */}
@@ -93,7 +135,14 @@ export function MapHome() {
 
         {view === "map" ? (
           <>
-            <ListingMap centre={loc} radius={radius} listings={listings} fridges={fridges} onSelect={setSelected} />
+            <ListingMap
+              centre={loc}
+              radius={radius}
+              listings={listings}
+              fridges={fridges}
+              onSelect={setSelected}
+              focus={focusQ.data ? { lat: focusQ.data.publicLat, lng: focusQ.data.publicLng } : undefined}
+            />
             <div className="pointer-events-none absolute inset-x-0 top-3 z-[1000] flex justify-center">
               <span className="rounded-full bg-white/95 px-3 py-1 text-sm font-semibold text-stone-700 shadow">
                 {listingsQ.isLoading ? "Finding food nearby…" : `${listings.length} ${listings.length === 1 ? "listing" : "listings"} within ${radiusLabel}`}
@@ -121,20 +170,20 @@ export function MapHome() {
 
         <button
           className="absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-[1000] min-h-[52px] -translate-x-1/2 rounded-full bg-accent px-6 text-base font-bold text-white shadow-lg"
-          onClick={shareLater}
+          onClick={() => nav("/share")}
         >
           + Share food
         </button>
       </main>
 
-      <BottomSheet open={!!selected} onClose={() => setSelected(null)}>
-        {selected && <ListingCard listing={selected} />}
+      <BottomSheet open={!!selected} onClose={closeSheet}>
+        {selected && (
+          <>
+            <ListingCard listing={selected} />
+            <ListingActions listing={selected} />
+          </>
+        )}
       </BottomSheet>
     </div>
   );
-}
-
-// Block 4 wires this to the post form.
-function shareLater() {
-  console.info("Share food arrives in Block 4");
 }

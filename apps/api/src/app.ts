@@ -7,6 +7,8 @@ import { optionalAuth } from "./lib/auth.js";
 import { env } from "./lib/env.js";
 import { errorHandler, notFound } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
+import { auth, me } from "./routes/auth.js";
+import { claims } from "./routes/claims.js";
 import { fridges } from "./routes/fridges.js";
 import { health } from "./routes/health.js";
 import { listings } from "./routes/listings.js";
@@ -27,8 +29,11 @@ export function createApp() {
 
   const api = express.Router();
   api.use("/health", health);
+  api.use("/auth", auth);
+  api.use("/me", me);
   api.use("/listings", listings);
   api.use("/fridges", fridges);
+  api.use("/claims", claims);
   api.use(notFound);
   app.use("/api", api);
 

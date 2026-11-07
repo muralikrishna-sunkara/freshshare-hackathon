@@ -41,12 +41,21 @@ function Recentre({ lat, lng, radius }: { lat: number; lng: number; radius: numb
   return null;
 }
 
+function FocusOn({ focus }: { focus?: { lat: number; lng: number } }) {
+  const map = useMap();
+  useEffect(() => {
+    if (focus) map.setView([focus.lat, focus.lng], 16, { animate: false });
+  }, [map, focus?.lat, focus?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 export function ListingMap(props: {
   centre: { lat: number; lng: number };
   radius: number;
   listings: Listing[];
   fridges: Fridge[];
   onSelect: (l: Listing) => void;
+  focus?: { lat: number; lng: number };
 }) {
   const icons = useMemo(
     () => Object.fromEntries(Object.entries(CATEGORY).map(([k, c]) => [k, pinIcon(c.color, c.emoji)])) as Record<string, L.DivIcon>,
@@ -60,6 +69,7 @@ export function ListingMap(props: {
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <Recentre lat={centre.lat} lng={centre.lng} radius={radius} />
+      <FocusOn focus={props.focus} />
       <Circle center={[centre.lat, centre.lng]} radius={radius} pathOptions={{ color: "#6b9f5e", weight: 2, fillOpacity: 0.06, dashArray: "6 6" }} />
       {props.fridges.map((f) => (
         <Marker key={f.id} position={[f.lat, f.lng]} icon={fridgeIcon} title={f.name} />

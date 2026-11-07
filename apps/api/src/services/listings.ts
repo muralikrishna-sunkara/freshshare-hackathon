@@ -51,6 +51,7 @@ export async function findNearby(lat: number, lng: number, radius: number, categ
       FROM "Listing"
       WHERE status = 'available'
         AND "bestBefore" > now()
+        AND NOT (origin = 'homemade' AND "createdAt" < now() - interval '48 hours')
         AND lat BETWEEN ${lat - latD} AND ${lat + latD}
         AND lng BETWEEN ${lng - lngD} AND ${lng + lngD}
         ${category ? Prisma.sql`AND category = ${category}::"Category"` : Prisma.empty}

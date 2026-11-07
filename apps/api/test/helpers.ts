@@ -12,3 +12,16 @@ export async function seedDb(): Promise<SeedResult> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), "fs-uploads-"));
   return runSeed(prisma, localStorage(tmp, "/uploads"), { bcryptCost: 4 });
 }
+
+import request from "supertest";
+import type { Express } from "express";
+
+export const photoPath = path.join(seedDir, "seed-photos", "lasagne.jpg");
+
+export async function loginAs(app: Express, key: string) {
+  const agent = request.agent(app);
+  const user = seedFile.users.find((u: { key: string }) => u.key === key);
+  const res = await agent.post("/api/auth/login").send({ email: user.email, password: seedFile.demoPassword });
+  if (res.status !== 200) throw new Error(`login ${key} failed: ${res.status} ${JSON.stringify(res.body)}`);
+  return agent;
+}

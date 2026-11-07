@@ -9,3 +9,6 @@
 - 2026-11-07: Map uses the browser location only when it is within 30 km of the Erlangen demo centre; otherwise it shows the demo area (so judges elsewhere still see the seeded food) with a small "Showing the Erlangen demo area" note.
 - 2026-11-07: `GET /api/fridges` added early (Block 2) so the empty map can say how many fridges are nearby; fridge pins show on the map. Check-ins and the fridge sheet stay in Block 9.
 - 2026-11-07: Impact banner shows a static placeholder (18 portions, the seed baseline) until Block 10.
+- 2026-11-07: Auth cookie `secure` follows the request scheme (`trust proxy` + ALB `X-Forwarded-Proto`), so sign-in also works on the plain-HTTP ALB URL before HTTPS is live.
+- 2026-11-07: Homemade food is hidden from the map 48 h after posting (query filter) instead of clamping its best-before date, so the date shown stays the giver's real date.
+- 2026-11-07: New accounts start unverified (no SMTP on the day); the DEMO phone step comes in Block 6.

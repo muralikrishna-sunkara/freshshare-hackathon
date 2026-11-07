@@ -33,7 +33,7 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
           <GiverRow giver={l.giver} />
         </div>
         <p className={`text-sm text-stone-600 ${compact ? "mt-1" : ""}`}>
-          {formatDistance(l.distanceM)} away · posted {timeAgo(l.createdAt)}
+          {l.distanceM !== undefined && <>{formatDistance(l.distanceM)} away · </>}posted {timeAgo(l.createdAt)}
           {!compact && (
             <>
               {" "}

@@ -68,3 +68,66 @@ export const fetchFridges = (lat: number, lng: number, radius: number) =>
   api<{ fridges: Fridge[] }>(`/fridges?${new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) })}`).then(
     (r) => r.fridges,
   );
+
+export interface Me {
+  id: string;
+  name: string;
+  email: string;
+  homeLat: number;
+  homeLng: number;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  verified: boolean;
+  ratingAvg: number;
+  ratingCount: number;
+  stats: { shared: number; received: number };
+}
+
+const json = (body: unknown): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export const fetchMe = () =>
+  api<{ user: Me }>("/me")
+    .then((r) => r.user)
+    .catch((e) => {
+      if (e instanceof ApiError && e.status === 401) return null;
+      throw e;
+    });
+
+export const login = (email: string, password: string) => api<{ user: Me }>("/auth/login", json({ email, password })).then((r) => r.user);
+
+export const register = (b: { name: string; email: string; password: string; homeLat: number; homeLng: number }) =>
+  api<{ user: Me }>("/auth/register", json(b)).then((r) => r.user);
+
+export const logout = () => fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+
+export type ClaimStatus = "pending" | "confirmed" | "collected" | "cancelled" | "lapsed";
+
+export interface ListingDetail extends Listing {
+  isMine: boolean;
+  myClaim: { id: string; status: ClaimStatus } | null;
+}
+
+export const fetchListing = (id: string) => api<{ listing: ListingDetail }>(`/listings/${id}`).then((r) => r.listing);
+
+export interface Claim {
+  id: string;
+  status: ClaimStatus;
+  holdUntil: string;
+  createdAt: string;
+  role: "giver" | "receiver";
+  listing: Listing;
+  receiver: Giver;
+  myRating: number | null;
+}
+
+export const reserveListing = (id: string) => api<{ claim: Claim }>(`/listings/${id}/claims`, { method: "POST" }).then((r) => r.claim);
+export const fetchClaim = (id: string) => api<{ claim: Claim }>(`/claims/${id}`).then((r) => r.claim);
+export const fetchMyClaims = () => api<{ asReceiver: Claim[]; asGiver: Claim[] }>("/claims");
+export const claimAction = (id: string, action: "confirm" | "collected" | "cancel") =>
+  api<{ claim: Claim }>(`/claims/${id}/${action}`, { method: "POST" }).then((r) => r.claim);
+
+export const createListing = (form: FormData) => api<{ listing: Listing }>("/listings", { method: "POST", body: form }).then((r) => r.listing);
