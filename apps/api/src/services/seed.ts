@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Category, ClaimStatus, FridgeState, ListingStatus, Origin, PrismaClient } from "@prisma/client";
+import type { Category, ClaimStatus, FridgeKind, FridgeState, ListingStatus, Origin, OrgRole, OrgStatus, OrgType, PrismaClient, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import sharp from "sharp";
 import { jitter, mulberry32 } from "../lib/geo.js";
@@ -11,7 +11,7 @@ import { TERMS_VERSION } from "./rules.js";
 interface SeedFile {
   demoPassword: string;
   mapCentre: { lat: number; lng: number };
-  users: { key: string; name: string; email: string; homeLat: number; homeLng: number; emailVerified: boolean; phoneVerified: boolean; ratingAvg: number; ratingCount: number }[];
+  users: { key: string; name: string; email: string; homeLat: number; homeLng: number; emailVerified: boolean; phoneVerified: boolean; ratingAvg: number; ratingCount: number; role?: UserRole; bio?: string }[];
   listings: {
     key: string; giver: string; title: string; description?: string; category: Category; origin: Origin; allergens: string[];
     bestBeforeOffsetMin: number; createdOffsetMin: number; pickupFromOffsetMin: number; pickupUntilOffsetMin: number;
@@ -25,6 +25,11 @@ interface SeedFile {
   fridges: { key: string; name: string; address: string; lat: number; lng: number; openingHours: string; photo?: string; lastCheckIn?: { state: FridgeState; by: string; offsetMin: number } }[];
   alertSubscriptions: { user: string; lat: number; lng: number; radiusM: number; categories: Category[] }[];
   impactBaseline?: { portionsThisWeek: number };
+  organizations?: {
+    key: string; name: string; type: OrgType; email: string; website?: string; address: string; city: string; lat: number; lng: number;
+    description: string; mission?: string; serviceArea?: string; contactName: string; status: OrgStatus; members: { user: string; role: OrgRole }[];
+  }[];
+  pendingFridges?: { key: string; name: string; kind: FridgeKind; address: string; lat: number; lng: number; openingHours: string; description?: string; accessNotes?: string; suggestedBy: string }[];
 }
 
 export function findSeedDir(): string {
@@ -44,6 +49,7 @@ export interface SeedResult {
   users: Record<string, string>;
   listings: Record<string, string>;
   fridges: Record<string, string>;
+  organizations: Record<string, string>;
   now: Date;
 }
 
@@ -62,12 +68,17 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
     prisma.report.deleteMany(),
     prisma.notification.deleteMany(),
     prisma.alertSubscription.deleteMany(),
+    prisma.bulkClaimItem.deleteMany(),
+    prisma.bulkClaim.deleteMany(),
+    prisma.organizationDocument.deleteMany(),
+    prisma.organizationMember.deleteMany(),
+    prisma.organization.deleteMany(),
     prisma.fridgeCheckIn.deleteMany(),
-    prisma.fridge.deleteMany(),
     prisma.rating.deleteMany(),
     prisma.message.deleteMany(),
     prisma.claim.deleteMany(),
     prisma.listing.deleteMany(),
+    prisma.fridge.deleteMany(),
     prisma.setting.deleteMany(),
     prisma.user.deleteMany(),
   ]);
@@ -81,7 +92,7 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
       data: {
         email: u.email, name: u.name, passwordHash, homeLat: u.homeLat, homeLng: u.homeLng,
         emailVerified: u.emailVerified, phoneVerified: u.phoneVerified, ratingAvg: u.ratingAvg, ratingCount: u.ratingCount,
-        termsAcceptedAt: now, termsVersion: TERMS_VERSION,
+        termsAcceptedAt: now, termsVersion: TERMS_VERSION, role: u.role ?? "user", bio: u.bio ?? null,
       },
     });
     users[u.key] = row.id;
@@ -154,11 +165,36 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
   }
   log(`fridges: ${seed.fridges.length}`);
 
+  for (const f of seed.pendingFridges ?? []) {
+    const row = await prisma.fridge.create({
+      data: {
+        name: f.name, kind: f.kind, address: f.address, lat: f.lat, lng: f.lng, openingHours: f.openingHours,
+        description: f.description ?? null, accessNotes: f.accessNotes ?? null, status: "pending", createdById: users[f.suggestedBy],
+      },
+    });
+    fridges[f.key] = row.id;
+  }
+
+  const organizations: Record<string, string> = {};
+  for (const o of seed.organizations ?? []) {
+    const row = await prisma.organization.create({
+      data: {
+        name: o.name, type: o.type, email: o.email, website: o.website ?? null, address: o.address, city: o.city, lat: o.lat, lng: o.lng,
+        description: o.description, mission: o.mission ?? null, serviceArea: o.serviceArea ?? null, contactName: o.contactName, status: o.status,
+        createdById: users[o.members.find((m) => m.role === "admin")!.user],
+        ...(o.status === "approved" ? { verifiedAt: now, verifiedById: users.admin ?? null } : {}),
+        members: { create: o.members.map((m) => ({ userId: users[m.user], role: m.role })) },
+      },
+    });
+    organizations[o.key] = row.id;
+  }
+  log(`organizations: ${(seed.organizations ?? []).length}, pending fridges: ${(seed.pendingFridges ?? []).length}`);
+
   for (const a of seed.alertSubscriptions) {
     await prisma.alertSubscription.create({ data: { userId: users[a.user], lat: a.lat, lng: a.lng, radiusM: a.radiusM, categories: a.categories } });
   }
   await prisma.setting.create({ data: { key: "impactBaselinePortions", value: String(seed.impactBaseline?.portionsThisWeek ?? 0) } });
   log("alerts and settings done");
 
-  return { dir, users, listings, fridges, now };
+  return { dir, users, listings, fridges, organizations, now };
 }

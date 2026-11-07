@@ -15,6 +15,8 @@ import { health } from "./routes/health.js";
 import { impact } from "./routes/impact.js";
 import { listings } from "./routes/listings.js";
 import { reports } from "./routes/reports.js";
+import { admin } from "./routes/admin.js";
+import { bulkClaims, organizations } from "./routes/organizations.js";
 import { users } from "./routes/users.js";
 
 export function createApp() {
@@ -41,6 +43,9 @@ export function createApp() {
   api.use("/impact", impact);
   api.use("/users", users);
   api.use("/reports", reports);
+  api.use("/organizations", organizations);
+  api.use("/bulk-claims", bulkClaims);
+  api.use("/admin", admin);
   api.use("/early-access", earlyAccess);
   api.use(notFound);
   app.use("/api", api);

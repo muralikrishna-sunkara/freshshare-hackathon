@@ -72,7 +72,8 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
             </>
           )}
         </p>
-        {!compact && l.areaLabel && <p className="text-sm text-stone-600">📍 Around {l.areaLabel} (exact address after confirmation)</p>}
+        {l.fridge?.name && <p className="text-sm font-semibold text-brand-dark">🧊 At {l.fridge.name}</p>}
+        {!compact && !l.fridge && l.areaLabel && <p className="text-sm text-stone-600">📍 Around {l.areaLabel} (exact address after confirmation)</p>}
         {!compact && l.weightKg && <p className="text-sm text-stone-600">About {l.weightKg} kg</p>}
         {!compact && l.hasHandoverSpot && <p className="text-sm text-brand-dark">Public handover spot offered</p>}
       </div>

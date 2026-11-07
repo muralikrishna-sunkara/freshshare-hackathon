@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { createListing, fetchListing, type Category, type DietaryTag, type Origin } from "../api/client";
+import { createListing, fetchFridges, fetchListing, type Category, type DietaryTag, type Origin } from "../api/client";
+import { useMe } from "../hooks/useMe";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { CATEGORY, DIETARY, ORIGIN } from "../lib/format";
 
@@ -51,6 +52,14 @@ export function ShareFood() {
   const [description, setDescription] = useState("");
   const [dietary, setDietary] = useState<DietaryTag[]>([]);
   const [weight, setWeight] = useState("");
+  const me = useMe();
+  const [place, setPlace] = useState<"home" | "fridge">(params.get("fridge") ? "fridge" : "home");
+  const [fridgeId, setFridgeId] = useState(params.get("fridge") ?? "");
+  const fridgesQ = useQuery({
+    queryKey: ["fridges", "share", me.data?.homeLat, me.data?.homeLng],
+    queryFn: () => fetchFridges(me.data!.homeLat, me.data!.homeLng, 10000),
+    enabled: !!me.data && place === "fridge",
+  });
   const [category, setCategory] = useState<Category>("leftovers");
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [bestBefore, setBestBefore] = useState(isoDay(addDays(1)));
@@ -98,7 +107,7 @@ export function ShareFood() {
   const maxDate = origin === "homemade" ? isoDay(addDays(2)) : undefined;
   const allTicked = CHECKS.every((c) => checks[c.key]);
   const hasPhoto = photos.length > 0 || reusePhotos.length > 0;
-  const ready = hasPhoto && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
+  const ready = hasPhoto && (place === "home" || !!fridgeId) && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
 
   const m = useMutation({
     mutationFn: () => {
@@ -118,6 +127,7 @@ export function ShareFood() {
       if (description.trim()) f.set("description", description.trim());
       if (dietary.length) f.set("dietaryTags", dietary.join(","));
       if (weight) f.set("weightKg", weight);
+      if (place === "fridge" && fridgeId) f.set("fridgeId", fridgeId);
       f.set("category", category);
       f.set("origin", origin!);
       f.set("bestBefore", new Date(`${bestBefore}T23:59:00`).toISOString());
@@ -247,6 +257,31 @@ export function ShareFood() {
             </div>
           </div>
         </div>
+
+        <fieldset>
+          <legend className={labelCls}>Where</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {([["home", "🏠 From my home"], ["fridge", "🧊 Drop at a community fridge"]] as const).map(([v, label]) => (
+              <button type="button" key={v} onClick={() => setPlace(v)} aria-pressed={place === v} className={`min-h-[52px] rounded-xl px-2 text-sm font-semibold ${place === v ? "bg-brand-dark text-white" : "bg-white ring-1 ring-stone-300"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {place === "home" ? (
+            <p className="mt-1 text-xs text-stone-500">Neighbours see only your area until you confirm their pickup.</p>
+          ) : (
+            <div className="mt-2">
+              <label className="sr-only" htmlFor="fridge">Community fridge</label>
+              <select id="fridge" className={inputCls} value={fridgeId} onChange={(e) => setFridgeId(e.target.value)}>
+                <option value="">Pick a fridge</option>
+                {fridgesQ.data?.map((fr) => (
+                  <option key={fr.id} value={fr.id}>{fr.name} · {fr.address}</option>
+                ))}
+              </select>
+              {fridgesQ.data?.length === 0 && <p className="mt-1 text-xs text-stone-500">No approved fridges within 10 km of your home pin.</p>}
+            </div>
+          )}
+        </fieldset>
 
         <fieldset>
           <legend className={labelCls}>Pickup</legend>

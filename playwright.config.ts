@@ -19,6 +19,8 @@ export default defineConfig({
     { name: "landing", testMatch: "landing.spec.ts", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     // Posting, privacy, report, URL filters, decline, live chat, post again (creates its own listing).
     { name: "listings", testMatch: "listings.spec.ts", dependencies: ["desktop"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // Fridges, organizations, admin approvals, bulk claims.
+    { name: "orgs", testMatch: "orgs-fridges.spec.ts", dependencies: ["listings"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     // Read-only browse check on a phone-sized browser; runs after the demo path.
     { name: "mobile", testMatch: "mobile-browse.spec.ts", dependencies: ["desktop"], use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],

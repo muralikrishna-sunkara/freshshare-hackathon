@@ -1,6 +1,9 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./components/RequireAuth";
+import { AdminPage } from "./pages/Admin";
 import { ClaimPage } from "./pages/ClaimPage";
+import { FridgePage, FridgesPage, SuggestFridgePage } from "./pages/Fridges";
+import { BulkClaimPage, NewBulkClaimPage, OrgDashboardPage, OrganizationPage, OrganizationsPage, RegisterOrganizationPage } from "./pages/Organizations";
 import { ContactPage, ImprintPage, NotFoundPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
 import { Landing } from "./pages/Landing";
 import { ListingPage } from "./pages/ListingPage";
@@ -25,6 +28,16 @@ export function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/users/:id" element={<PublicProfile />} />
         <Route path="/listings/:id" element={<ListingPage />} />
+        <Route path="/fridges" element={<FridgesPage />} />
+        <Route path="/fridges/new" element={<RequireAuth><SuggestFridgePage /></RequireAuth>} />
+        <Route path="/fridges/:id" element={<FridgePage />} />
+        <Route path="/organizations" element={<OrganizationsPage />} />
+        <Route path="/organizations/new" element={<RequireAuth><RegisterOrganizationPage /></RequireAuth>} />
+        <Route path="/organizations/:id" element={<OrganizationPage />} />
+        <Route path="/organizations/:id/dashboard" element={<RequireAuth><OrgDashboardPage /></RequireAuth>} />
+        <Route path="/organizations/:id/bulk-claims/new" element={<RequireAuth><NewBulkClaimPage /></RequireAuth>} />
+        <Route path="/bulk-claims/:id" element={<RequireAuth><BulkClaimPage /></RequireAuth>} />
+        <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route

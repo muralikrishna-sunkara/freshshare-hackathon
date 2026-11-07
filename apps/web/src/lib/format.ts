@@ -1,4 +1,4 @@
-import type { Category, DietaryTag, Origin, ReportReason } from "../api/client";
+import type { BulkStatus, Category, DietaryTag, FillLevel, FridgeKind, Origin, OrgRole, OrgType, ReportReason } from "../api/client";
 
 export const CATEGORY: Record<Category, { label: string; color: string; emoji: string }> = {
   leftovers: { label: "Leftovers", color: "#d9a23c", emoji: "🍲" },
@@ -59,3 +59,40 @@ export function timeLeft(iso: string, now = Date.now()): string {
   const h = Math.round(min / 60);
   return h < 48 ? `${h} h left` : `${Math.round(h / 24)} days left`;
 }
+
+export const FRIDGE_KIND: Record<FridgeKind, { label: string; emoji: string }> = {
+  fridge: { label: "Community fridge", emoji: "🧊" },
+  pantry: { label: "Pantry shelf", emoji: "🥫" },
+  dropoff: { label: "Drop-off point", emoji: "📦" },
+};
+
+export const FILL: Record<FillLevel, { label: string; tone: string }> = {
+  empty: { label: "Empty", tone: "bg-stone-100 text-stone-700" },
+  low: { label: "Low", tone: "bg-accent-light text-accent-dark" },
+  half: { label: "Half full", tone: "bg-brand-light text-brand-dark" },
+  full: { label: "Full", tone: "bg-brand-light text-brand-dark" },
+};
+
+export const ORG_TYPE: Record<OrgType, string> = {
+  food_bank: "Food bank",
+  ngo: "NGO",
+  charity: "Charity",
+  community_center: "Community center",
+  religious_org: "Religious organization",
+  other: "Other",
+};
+
+export const ORG_ROLE: Record<OrgRole, { label: string; help: string }> = {
+  admin: { label: "Admin", help: "Manages the team and settings" },
+  manager: { label: "Manager", help: "Creates pickup runs (bulk claims)" },
+  volunteer: { label: "Volunteer", help: "Collects items on a run" },
+  viewer: { label: "Viewer", help: "Can look, not change" },
+};
+
+export const BULK_STATUS: Record<BulkStatus, { label: string; tone: string }> = {
+  pending: { label: "Waiting for givers", tone: "bg-accent-light text-accent-dark" },
+  in_progress: { label: "In progress", tone: "bg-brand-light text-brand-dark" },
+  partially_completed: { label: "Partially collected", tone: "bg-brand-light text-brand-dark" },
+  completed: { label: "Completed", tone: "bg-brand text-white" },
+  cancelled: { label: "Cancelled", tone: "bg-stone-100 text-stone-600" },
+};
