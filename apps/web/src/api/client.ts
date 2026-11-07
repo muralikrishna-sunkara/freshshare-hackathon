@@ -165,6 +165,20 @@ export const claimAction = (id: string, action: "confirm" | "collected" | "cance
   api<{ claim: Claim }>(`/claims/${id}/${action}`, { method: "POST" }).then((r) => r.claim);
 
 export const createListing = (form: FormData) => api<{ listing: Listing }>("/listings", { method: "POST", body: form }).then((r) => r.listing);
+/** K1: suggested fields from the first photo. The form fills them in for the giver to check. */
+export interface PhotoSuggestion {
+  title: string;
+  category: Category;
+  origin: Origin;
+  dietaryTags: DietaryTag[];
+  allergens: string[];
+}
+export const fetchAiStatus = () => api<{ photoAutofill: boolean }>("/ai/status");
+export const suggestFromPhoto = (photo: File) => {
+  const f = new FormData();
+  f.set("photo", photo);
+  return api<{ suggestion: PhotoSuggestion }>("/ai/photo-suggestions", { method: "POST", body: f }).then((r) => r.suggestion);
+};
 export const updateListing = (id: string, form: FormData) =>
   api<{ listing: Listing }>(`/listings/${encodeURIComponent(id)}`, { method: "PATCH", body: form }).then((r) => r.listing);
 

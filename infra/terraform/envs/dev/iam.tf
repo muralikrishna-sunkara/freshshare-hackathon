@@ -28,7 +28,7 @@ resource "aws_iam_role_policy_attachment" "execution" {
 data "aws_iam_policy_document" "execution_secrets" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.app.arn]
+    resources = concat([aws_secretsmanager_secret.app.arn], local.ai_secret_arns)
   }
 }
 

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { createListing, fetchFridges, fetchListing, updateListing, type Category, type DietaryTag, type Origin } from "../api/client";
+import { createListing, fetchAiStatus, fetchFridges, fetchListing, suggestFromPhoto, updateListing, type Category, type DietaryTag, type Origin } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { CATEGORY, DIETARY, ORIGIN } from "../lib/format";
@@ -104,6 +104,19 @@ export function ShareFood() {
     setBestBefore(isoDay(addDays(t.origin === "homemade" ? Math.min(t.bestBeforeDays, 2) : t.bestBeforeDays)));
     setWindowIdx(2);
   };
+  // K1: "Fill from photo" only when the server has an AI key.
+  const aiQ = useQuery({ queryKey: ["ai-status"], queryFn: fetchAiStatus, staleTime: 5 * 60_000 });
+  const autofill = useMutation({
+    mutationFn: () => suggestFromPhoto(photos[0]),
+    onSuccess: (s) => {
+      applyTemplate(s.category);
+      setTitle(s.title);
+      setOrigin(s.origin);
+      setDietary(s.dietaryTags);
+      setAllergens(s.allergens.filter((a) => ALLERGENS.includes(a)));
+      if (s.origin === "homemade") setBestBefore(isoDay(addDays(1)));
+    },
+  });
   const addPhotos = (files: FileList | null) => {
     if (!files) return;
     setPhotos((ps) => [...ps, ...Array.from(files)].slice(0, MAX_PHOTOS));
@@ -224,6 +237,26 @@ export function ShareFood() {
             </label>
           )}
         </div>
+
+        {aiQ.data?.photoAutofill && photos.length > 0 && (
+          <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-stone-200">
+            <button
+              type="button"
+              onClick={() => autofill.mutate()}
+              disabled={autofill.isPending}
+              className="min-h-[44px] w-full rounded-xl bg-accent px-4 font-bold text-stone-900 hover:brightness-105 disabled:opacity-60"
+            >
+              {autofill.isPending ? "Looking at your photo…" : "✨ Fill from photo"}
+            </button>
+            {autofill.isSuccess && (
+              <p role="status" className="text-sm text-brand-dark">We filled in the details from your photo. Please check them, especially allergens, before posting.</p>
+            )}
+            {autofill.isError && (
+              <p role="alert" className="text-sm text-red-800">{autofill.error instanceof Error ? autofill.error.message : "We couldn't read the photo just now. Please fill in the details yourself."}</p>
+            )}
+            {!autofill.isSuccess && !autofill.isError && <p className="text-xs text-stone-500">Suggests the title, category, label, dietary tags and allergens from your first photo. You can change everything.</p>}
+          </div>
+        )}
 
         <div>
           <label className={labelCls} htmlFor="title">What is it?</label>

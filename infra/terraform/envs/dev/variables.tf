@@ -133,3 +133,11 @@ variable "ses_sandbox_recipients" {
   type        = list(string)
   default     = []
 }
+
+# ---------- Photo autofill (K1) ----------
+
+variable "photo_autofill_secret_name" {
+  description = "Existing Secrets Manager secret holding {\"AI_API_KEY\":\"sk-ant-...\"} for photo autofill. Created by hand so the key never passes through Terraform or CI. Empty string = feature off."
+  type        = string
+  default     = "freshshare-dev/ai"
+}

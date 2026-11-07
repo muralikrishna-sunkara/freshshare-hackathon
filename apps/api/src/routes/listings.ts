@@ -13,12 +13,10 @@ import { claimView, reserve } from "../services/claims.js";
 import { isBlockedBetween } from "../services/blocks.js";
 import { joinWaitlist, leaveWaitlist, waitlistStatus } from "../services/waitlist.js";
 import { findNearby, publicListing } from "../services/listings.js";
-import { DIETARY_TAGS, isRawMeatOrFish, RAW_MEAT_MESSAGE } from "../services/rules.js";
+import { CATEGORIES, DIETARY_TAGS, isRawMeatOrFish, ORIGINS, RAW_MEAT_MESSAGE } from "../services/rules.js";
 
 export const listings = Router();
 
-const CATEGORIES = ["leftovers", "fruit_veg", "bread", "packaged", "dairy", "other"] as const;
-const ORIGINS = ["homemade", "packaged", "fresh_produce"] as const;
 
 const nearbyQuery = z.object({
   lat: z.coerce.number().min(-90).max(90),

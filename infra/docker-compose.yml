@@ -24,6 +24,8 @@ services:
       # Notification emails go to Mailpit: open http://localhost:8025 to read them
       EMAIL_TRANSPORT: smtp
       VAPID_PRIVATE_KEY_PEM: ${VAPID_PRIVATE_KEY_PEM:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5-5}
       MAILPIT_URL: http://mailpit:8025
     # Apply migrations on start locally (on ECS they run as a one-off task)
     command: ["sh", "-c", "npx prisma migrate deploy && node dist/src/index.js"]
