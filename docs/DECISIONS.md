@@ -6,3 +6,6 @@
 - 2026-11-07: `Fridge.photoUrl` added to the schema (seed has a photo per fridge).
 - 2026-11-07: Web Caddy proxies `/api` and `/uploads` to `api:4000` locally; on ECS the ALB routes `/api/*` to the api directly and photos come from CloudFront.
 - 2026-11-07: `npm run lint` is a strict TypeScript typecheck for both apps (fast, no extra config).
+- 2026-11-07: Map uses the browser location only when it is within 30 km of the Erlangen demo centre; otherwise it shows the demo area (so judges elsewhere still see the seeded food) with a small "Showing the Erlangen demo area" note.
+- 2026-11-07: `GET /api/fridges` added early (Block 2) so the empty map can say how many fridges are nearby; fridge pins show on the map. Check-ins and the fridge sheet stay in Block 9.
+- 2026-11-07: Impact banner shows a static placeholder (18 portions, the seed baseline) until Block 10.

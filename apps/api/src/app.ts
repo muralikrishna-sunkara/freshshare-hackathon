@@ -7,6 +7,7 @@ import { optionalAuth } from "./lib/auth.js";
 import { env } from "./lib/env.js";
 import { errorHandler, notFound } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
+import { fridges } from "./routes/fridges.js";
 import { health } from "./routes/health.js";
 import { listings } from "./routes/listings.js";
 
@@ -27,6 +28,7 @@ export function createApp() {
   const api = express.Router();
   api.use("/health", health);
   api.use("/listings", listings);
+  api.use("/fridges", fridges);
   api.use(notFound);
   app.use("/api", api);
 
