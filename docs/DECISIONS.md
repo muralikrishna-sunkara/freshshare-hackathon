@@ -15,3 +15,11 @@
 - 2026-11-07: New ratings update the rated user's average incrementally (avg × count + stars) so seeded rating history is kept.
 - 2026-11-07: Verified badge needs email + phone. Both steps are DEMO today: phone accepts code 123456, email is a one-tap confirm (no SMS or SMTP provider). Labelled DEMO in code and UI.
 - 2026-11-07: The Playwright demo-path test (`npm run e2e`) runs locally or against `BASE_URL`; it is not wired into the deploy workflow yet because CI would need the full stack running (Block 7 follow-up).
+- 2026-11-07: Impact "this week" = portions of claims collected in the last 7 days whose listing is within 2 km, plus the seeded `impactBaselinePortions` setting; kg = portions × 0.4, labelled as an estimate. Personal totals count portions given and received.
+- 2026-11-07: Chat is allowed on pending, confirmed and collected pickups; closed (cancelled/lapsed) pickups are read-only.
+
+## Desktop web layout (2026-11-07)
+- Krish: "This is not a mobile application, it is a web app." From 1024 px the app uses a top nav (Find food, My pickups, Share food, profile), a 420 px sidebar with filters and the listing list next to the map, and listing/fridge details in a side panel over the map (Esc closes it). The pickup page puts the chat in a second column.
+- Below 1024 px the same pages keep the Map/List toggle and bottom sheets, so phone browsers still work.
+- Playwright runs the full demo path at 1440×900 (desktop) and a read-only browse check on an iPhone-sized browser.
+- Hard-coded map/pin colours switched to the Basil & Honey palette (#2e5e4e / #1f4337 / #d9a23c / #7a560f) to match the theme PR; everything else uses Tailwind tokens.

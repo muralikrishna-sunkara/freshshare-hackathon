@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ah } from "../lib/errors.js";
+import { requireAuth, userId } from "../lib/auth.js";
+import { ah, HttpError } from "../lib/errors.js";
 import { distanceM, roundDistance } from "../lib/geo.js";
 import { prisma } from "../lib/prisma.js";
 
@@ -33,5 +34,20 @@ fridges.get(
         lastCheckIn: f.checkIns[0] ? { state: f.checkIns[0].state, at: f.checkIns[0].createdAt } : null,
       }));
     res.json({ fridges: out });
+  }),
+);
+
+const checkInBody = z.object({ state: z.enum(["stocked", "empty", "needs_cleaning"]) });
+
+fridges.post(
+  "/:id/checkins",
+  requireAuth,
+  ah(async (req, res) => {
+    const id = z.string().min(1).parse(req.params.id);
+    const { state } = checkInBody.parse(req.body);
+    const fridge = await prisma.fridge.findUnique({ where: { id } });
+    if (!fridge) throw new HttpError(404, "not_found", "Fridge not found");
+    const c = await prisma.fridgeCheckIn.create({ data: { fridgeId: id, userId: userId(req), state } });
+    res.status(201).json({ checkIn: { state: c.state, at: c.createdAt } });
   }),
 );

@@ -207,7 +207,7 @@ export function ShareFood() {
             <label key={c.key} className="flex min-h-[44px] cursor-pointer items-center gap-3">
               <input
                 type="checkbox"
-                className="h-6 w-6 accent-[#3e6b35]"
+                className="h-6 w-6 accent-[#1f4337]"
                 checked={!!checks[c.key]}
                 onChange={(e) => setChecks((s) => ({ ...s, [c.key]: e.target.checked }))}
               />

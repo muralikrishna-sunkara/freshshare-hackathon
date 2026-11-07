@@ -9,8 +9,13 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: process.env.BASE_URL ?? "http://localhost:5173",
-    ...devices["iPhone 13"],
-    browserName: "chromium",
     trace: "off",
   },
+  // FreshShare is a responsive web app: run the demo path on a desktop browser and a phone browser.
+  projects: [
+    // Full demo path (reserves the lasagne, so it needs fresh seed data each run).
+    { name: "desktop", testMatch: "demo-path.spec.ts", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // Read-only browse check on a phone-sized browser; runs after the demo path.
+    { name: "mobile", testMatch: "mobile-browse.spec.ts", dependencies: ["desktop"], use: { ...devices["iPhone 13"], browserName: "chromium" } },
+  ],
 });
