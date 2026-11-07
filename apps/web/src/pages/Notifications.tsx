@@ -13,7 +13,7 @@ const ICON: Record<NotificationType, string> = {
   listing_expiring_soon: "⏰",
   new_listing_nearby: "📍",
   waitlist_offer: "🎟️",
-  fridge_approved: "🧊",
+  fridge_approved: "✅",
   org_approved: "🏛️",
 };
 

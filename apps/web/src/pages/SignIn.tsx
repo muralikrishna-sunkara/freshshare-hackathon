@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { login } from "../api/client";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function SignIn() {
   const [email, setEmail] = useState("");
@@ -30,8 +31,11 @@ export function SignIn() {
           <input id="email" type="email" autoComplete="email" required className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div>
-          <label className={labelCls} htmlFor="password">Password</label>
-          <input id="password" type="password" autoComplete="current-password" required className={inputCls} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="flex items-baseline justify-between">
+            <label className={labelCls} htmlFor="password">Password</label>
+            <Link to={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="text-sm font-semibold text-brand-dark underline">Forgot password?</Link>
+          </div>
+          <PasswordInput id="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         <ErrorNote error={m.error} />
         <button className={primaryBtn} disabled={m.isPending}>{m.isPending ? "Signing in…" : "Sign in"}</button>

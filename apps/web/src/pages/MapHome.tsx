@@ -16,6 +16,8 @@ import { useIsDesktop } from "../hooks/useMediaQuery";
 import { useMe } from "../hooks/useMe";
 import { useSavedSearches } from "../hooks/useSavedSearches";
 import { CATEGORY, DIETARY, FILL, formatDistance } from "../lib/format";
+import { AddressSearch } from "../components/AddressSearch";
+import { FridgeIcon } from "../components/FridgeIcon";
 
 const RADII = [1000, 2000, 5000, 10000] as const;
 const chipBase = "shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition min-h-[40px]";
@@ -30,7 +32,7 @@ const SORTS: Record<SortKey, { label: string; compare: (a: Listing, b: Listing) 
 };
 
 export function MapHome() {
-  const loc = useLocation();
+  const device = useLocation();
   const isDesktop = useIsDesktop();
   const [selected, setSelected] = useState<Listing | null>(null);
   const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
@@ -41,6 +43,10 @@ export function MapHome() {
   const category = (params.get("category") as Category | null) ?? undefined;
   const diet = (params.get("diet") as DietaryTag | null) ?? undefined;
   const showFridges = params.get("fridges") !== "0";
+  // "Search this area" / place search (T2.8): ?at=lat,lng overrides the device or demo location.
+  const atMatch = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(params.get("at") ?? "");
+  const at = atMatch ? { lat: Number(atMatch[1]), lng: Number(atMatch[2]) } : null;
+  const loc: { lat: number; lng: number; source: "device" | "demo" | "area" } = at ? { ...at, source: "area" } : device;
   const setFilter = (key: string, value: string | undefined) =>
     setParams(
       (p) => {
@@ -51,6 +57,7 @@ export function MapHome() {
       },
       { replace: true },
     );
+  const setArea = (c: { lat: number; lng: number } | null) => setFilter("at", c ? `${c.lat.toFixed(5)},${c.lng.toFixed(5)}` : undefined);
   const setRadius = (r: number) => setFilter("km", r === 2000 ? undefined : String(r / 1000));
   const setCategory = (c: Category | undefined) => setFilter("category", c);
   const setDiet = (d: DietaryTag | undefined) => setFilter("diet", d);
@@ -140,7 +147,7 @@ export function MapHome() {
         </button>
       ))}
       <button onClick={() => setShowFridges((v) => !v)} className={`${chipBase} ${showFridges ? chipOn : chipOff}`} aria-pressed={showFridges}>
-        🧊 Fridges
+        <FridgeIcon className="mr-1 h-4 w-4" />Fridges
       </button>
       {!wrap && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
       {wrap && <span className="basis-full" />}
@@ -172,6 +179,16 @@ export function MapHome() {
     </div>
   );
   const filters = renderFilters(isDesktop);
+  const placeSearch = (
+    <div className="flex items-end gap-2">
+      <AddressSearch label="Search a place" hideLabel placeholder="📍 Search a street or place" near={loc} onPick={(p) => setArea(p)} className="min-w-0 flex-1" />
+      {at && (
+        <button type="button" onClick={() => setArea(null)} className={`${chipBase} ${chipOff} shrink-0`}>
+          {device.source === "device" ? "Back to my location" : "Back to demo area"}
+        </button>
+      )}
+    </div>
+  );
 
   const viewToggle = (
     <div className="flex shrink-0 rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist" aria-label="View">
@@ -223,7 +240,7 @@ export function MapHome() {
             {fridges.map((f) => (
               <li key={f.id}>
                 <button type="button" onClick={() => openFridge(f)} className="flex w-full gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 ring-stone-200 hover:ring-brand">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-light text-2xl" aria-hidden>🧊</span>
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-light text-2xl text-brand-dark" aria-hidden><FridgeIcon className="h-7 w-7" /></span>
                   <span className="min-w-0 text-sm">
                     <span className="block truncate font-bold">{f.name}</span>
                     <span className="block text-stone-600">{formatDistance(f.distanceM)} away · {f.openingHours}</span>
@@ -297,6 +314,7 @@ export function MapHome() {
       onSelect={openListing}
       onSelectFridge={openFridge}
       focus={focusQ.data ? { lat: focusQ.data.publicLat, lng: focusQ.data.publicLng } : undefined}
+      onSearchArea={setArea}
     />
   );
 
@@ -418,6 +436,7 @@ export function MapHome() {
                 {viewToggle}
               </div>
               {impactBanner}
+              {placeSearch}
               {filters}
               {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
             </div>
@@ -441,7 +460,7 @@ export function MapHome() {
               <p className="text-sm font-semibold text-stone-700">{countLabel}</p>
               {viewToggle}
             </div>
-            {impactBanner}
+            {placeSearch}
             {filters}
             {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
           </div>

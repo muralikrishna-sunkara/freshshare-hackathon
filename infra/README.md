@@ -146,6 +146,10 @@ New SES accounts are in the **sandbox**: they can only send to verified addresse
 
 Locally, `docker compose` starts Mailpit; open http://localhost:8025 to read every email the app sends.
 
+## Web push notifications
+
+Terraform generates the VAPID signing key (`tls_private_key.vapid`, P-256) and stores it in the app secret as `VAPID_PRIVATE_KEY_PEM`; the api derives the public key from it and serves it at `/api/push/key`. Nothing to set up by hand. Push needs HTTPS (it works on `https://freshshare.de`, not on the plain-HTTP ALB name). On iPhone, push only works after "Add to Home Screen". Don't recreate the key: every browser would have to turn push on again. Locally, run `npm run vapid -w apps/api` and paste the line into `.env`.
+
 ## Tomorrow: switching to the real app
 
 `app-deploy.yml` does nothing until `apps/api/Dockerfile` or
@@ -203,6 +207,11 @@ terraform init -backend=false && terraform validate && terraform test
 
 Commit the `.terraform.lock.hcl` files after your first `terraform init`
 (`terraform providers lock -platform=linux_amd64 -platform=darwin_arm64` covers CI and a Mac).
+
+**Stale state lock.** If a run fails with `Error acquiring the state lock` and no other Terraform run is
+active (for example an apply was cancelled), copy the `ID:` from the "Lock Info" in that log and run the
+*Infrastructure (Terraform)* workflow manually with `unlock_id` set to it and `action` = `apply`.
+Locally: `terraform force-unlock <ID>`.
 
 Useful commands:
 

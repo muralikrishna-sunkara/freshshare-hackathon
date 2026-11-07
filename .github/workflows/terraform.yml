@@ -25,6 +25,10 @@ on:
         type: choice
         options: [plan, apply]
         default: plan
+      unlock_id:
+        description: "Optional: release a stale state lock with this Lock ID (from a failed run's log) before planning"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -120,6 +124,14 @@ jobs:
         if: steps.cfg.outputs.ready == 'true'
         working-directory: ${{ env.WORKDIR }}
         run: terraform init -backend-config="bucket=$STATE_BUCKET" -backend-config="region=$AWS_REGION"
+
+      # Only on a manual run with unlock_id set, e.g. after a cancelled apply left the S3 lock behind.
+      - name: terraform force-unlock
+        if: steps.cfg.outputs.ready == 'true' && github.event_name == 'workflow_dispatch' && inputs.unlock_id != ''
+        working-directory: ${{ env.WORKDIR }}
+        env:
+          LOCK_ID: ${{ inputs.unlock_id }}
+        run: terraform force-unlock -force "$LOCK_ID"
 
       - name: terraform plan
         if: steps.cfg.outputs.ready == 'true'

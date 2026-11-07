@@ -2,6 +2,8 @@ import type { Listing } from "../api/client";
 import { useState } from "react";
 import { allergenLabel, CATEGORY, DIETARY, formatDay, formatDistance, formatTime, ORIGIN, timeAgo, timeLeft } from "../lib/format";
 import { GiverRow } from "./GiverRow";
+import { FridgeIcon } from "./FridgeIcon";
+import { FoodPhoto } from "./FoodPhoto";
 
 const chip = "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold";
 
@@ -16,7 +18,7 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
       onClick={onClick}
     >
       <div className={compact ? "h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-stone-100" : "aspect-[4/3] w-full overflow-hidden bg-stone-100"}>
-        <img src={compact ? photos[0] : photos[shown] ?? photos[0]} alt={l.title} loading="lazy" className="h-full w-full object-cover" />
+        <FoodPhoto key={compact ? photos[0] : photos[shown] ?? photos[0]} src={compact ? photos[0] : photos[shown] ?? photos[0]} alt={l.title} category={l.category} />
       </div>
       {!compact && photos.length > 1 && (
         <div className="flex gap-2 px-4 pt-3" aria-label="More photos">
@@ -72,7 +74,7 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
             </>
           )}
         </p>
-        {l.fridge?.name && <p className="text-sm font-semibold text-brand-dark">🧊 At {l.fridge.name}</p>}
+        {l.fridge?.name && <p className="flex items-center gap-1 text-sm font-semibold text-brand-dark"><FridgeIcon className="h-4 w-4" /> At {l.fridge.name}</p>}
         {!compact && !l.fridge && l.areaLabel && <p className="text-sm text-stone-600">📍 Around {l.areaLabel} (exact address after confirmation)</p>}
         {!compact && l.weightKg && <p className="text-sm text-stone-600">About {l.weightKg} kg</p>}
         {!compact && l.hasHandoverSpot && <p className="text-sm text-brand-dark">Public handover spot offered</p>}

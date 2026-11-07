@@ -191,6 +191,7 @@ model Listing {
   // T2.3 waitlist: after a cancelled claim the first person in line gets an exclusive hold.
   reservedForUserId String?
   reservedUntil     DateTime?
+  scheduleId        String?
   createdAt         DateTime          @default(now())
   claims            Claim[]
   waitlist          ListingWaitlist[]
@@ -428,4 +429,56 @@ model Block {
 
   @@unique([blockerId, blockedId])
   @@index([blockedId])
+}
+
+/// T2.2: one row per browser/device that allowed push notifications.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// T2.4: a template a giver (usually a business) re-posts on chosen weekdays.
+model ListingSchedule {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  description    String?
+  category       Category
+  origin         Origin
+  allergens      String[]
+  dietaryTags    String[]
+  portions       Int      @default(1)
+  weightKg       Float?
+  handoverSpot   String?
+  photos         String[]
+  /// 0 = Sunday ... 6 = Saturday (Europe/Berlin)
+  daysOfWeek     Int[]
+  /// "HH:MM" Europe/Berlin: when the listing goes up and pickup starts
+  time           String
+  pickupHours    Int      @default(3)
+  /// best-before = posting day + this many days
+  bestBeforeDays Int      @default(1)
+  active         Boolean  @default(true)
+  lastPostedOn   String?
+  createdAt      DateTime @default(now())
+
+  @@index([active])
+}
+
+/// Password reset links: only a SHA-256 of the token is stored; valid for one hour, once.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }

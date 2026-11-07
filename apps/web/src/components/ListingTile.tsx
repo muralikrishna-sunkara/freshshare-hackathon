@@ -2,6 +2,7 @@ import type { Listing } from "../api/client";
 import { CATEGORY, DIETARY, formatDay, formatDistance, formatTime, ORIGIN, timeLeft } from "../lib/format";
 import { Stars } from "./Stars";
 import { VerifiedBadge } from "./VerifiedBadge";
+import { FoodPhoto } from "./FoodPhoto";
 
 const chip = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
 
@@ -25,7 +26,7 @@ export function ListingTile({ listing: l, selected, onOpen }: { listing: Listing
       className={`flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 transition hover:shadow-md ${selected ? "ring-2 ring-brand" : "ring-stone-200"}`}
     >
       <button type="button" onClick={onOpen} className="relative h-44 w-full shrink-0 bg-stone-100" aria-label={`Open ${l.title}`}>
-        <img src={photos[0]} alt={l.title} loading="lazy" className="h-full w-full object-cover" />
+        <FoodPhoto src={photos[0]} alt={l.title} category={l.category} />
         <span className="absolute right-2 top-2 rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-white shadow">
           {cat.emoji} {cat.label}
         </span>

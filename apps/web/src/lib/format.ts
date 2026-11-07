@@ -61,7 +61,7 @@ export function timeLeft(iso: string, now = Date.now()): string {
 }
 
 export const FRIDGE_KIND: Record<FridgeKind, { label: string; emoji: string }> = {
-  fridge: { label: "Community fridge", emoji: "🧊" },
+  fridge: { label: "Community fridge", emoji: "" }, // rendered with <FridgeIcon />
   pantry: { label: "Pantry shelf", emoji: "🥫" },
   dropoff: { label: "Drop-off point", emoji: "📦" },
 };

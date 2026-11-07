@@ -20,6 +20,11 @@ const schema = z.object({
   // Photon reverse geocoding for the public "91054 Altstadt" area label. "off" in tests.
   GEOCODER: z.enum(["photon", "off"]).default(process.env.NODE_ENV === "test" ? "off" : "photon"),
   PHOTON_URL: z.string().default("https://photon.komoot.io"),
+  // Web push (T2.2): a P-256 private key as PEM (Terraform tls_private_key on AWS, `npm run vapid` locally).
+  // Unset = push is off and the settings page says so. "memory" (tests) records pushes instead of sending them.
+  VAPID_PRIVATE_KEY_PEM: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:notifications@freshshare.de"),
+  PUSH_TRANSPORT: z.enum(["webpush", "memory"]).default(process.env.NODE_ENV === "test" ? "memory" : "webpush"),
 });
 
 export type Env = z.infer<typeof schema>;

@@ -6,6 +6,7 @@ import { LocationPicker } from "../components/LocationPicker";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { TermsDialog } from "../components/TermsDialog";
 import { DEMO_CENTRE } from "../hooks/useLocation";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function SignUp() {
   const [name, setName] = useState("");
@@ -52,7 +53,7 @@ export function SignUp() {
         </div>
         <div>
           <label className={labelCls} htmlFor="password">Password</label>
-          <input id="password" type="password" required minLength={8} autoComplete="new-password" className={inputCls} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput id="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <p className="mt-1 text-xs text-stone-500">At least 8 characters.</p>
         </div>
         <div>

@@ -19,6 +19,8 @@ import { reports } from "./routes/reports.js";
 import { admin } from "./routes/admin.js";
 import { bulkClaims, organizations } from "./routes/organizations.js";
 import { users } from "./routes/users.js";
+import { alerts, push } from "./routes/alerts.js";
+import { schedules } from "./routes/schedules.js";
 
 export function createApp() {
   const app = express();
@@ -49,6 +51,9 @@ export function createApp() {
   api.use("/admin", admin);
   api.use("/notifications", notifications);
   api.use("/early-access", earlyAccess);
+  api.use("/alerts", alerts);
+  api.use("/push", push);
+  api.use("/schedules", schedules);
   api.use(notFound);
   app.use("/api", api);
 

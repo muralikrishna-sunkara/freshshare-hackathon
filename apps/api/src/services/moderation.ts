@@ -16,6 +16,7 @@ export async function suspendUser(userId: string, reason: string) {
     prisma.claim.updateMany({ where: { id: { in: open.map((c) => c.id) } }, data: { status: "cancelled" } }),
     prisma.listing.updateMany({ where: { giverId: userId, status: { in: ["available", "reserved"] } }, data: { status: "removed" } }),
     prisma.listingWaitlist.deleteMany({ where: { userId } }),
+    prisma.listingSchedule.updateMany({ where: { userId }, data: { active: false } }),
   ]);
   // Food they had reserved from others goes back on the map (or to the next person waiting).
   for (const c of open.filter((x) => x.listing.giverId !== userId)) {
