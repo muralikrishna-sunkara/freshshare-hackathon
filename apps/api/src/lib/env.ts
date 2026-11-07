@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const schema = z.object({
   NODE_ENV: z.string().default("development"),
+  /** Sign-in/sign-up attempts per IP per 15 minutes. Raise it locally for repeated e2e runs (they all come from one IP). */
+  AUTH_RATE_LIMIT: z.coerce.number().int().min(1).default(30),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1).default("dev-only-change-me"),

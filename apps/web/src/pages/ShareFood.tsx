@@ -4,6 +4,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { createListing, fetchAiStatus, fetchFridges, fetchListing, suggestFromPhoto, updateListing, type Category, type DietaryTag, type Origin } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
+import { FieldError } from "../components/States";
+
+/** Red asterisk for required fields; hidden from screen readers, which get aria-required instead. */
+const Req = () => <span aria-hidden className="text-red-700"> *</span>;
 import { locale, t } from "../i18n";
 import { allergenLabel, CATEGORY, DIETARY, ORIGIN } from "../lib/format";
 
@@ -72,6 +76,8 @@ export function ShareFood() {
   const [portions, setPortions] = useState(1);
   const [allergens, setAllergens] = useState<string[]>([]);
   const [handoverSpot, setHandoverSpot] = useState("");
+  const [pickupInstructions, setPickupInstructions] = useState("");
+  const [tried, setTried] = useState(false);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const previews = useMemo(() => photos.map((p) => URL.createObjectURL(p)), [photos]);
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
@@ -91,6 +97,7 @@ export function ShareFood() {
     setDietary(l.dietaryTags ?? []);
     setWeight(l.weightKg ? String(l.weightKg) : "");
     setHandoverSpot(l.handoverSpot ?? "");
+    setPickupInstructions(l.pickupInstructions ?? "");
     setReusePhotos(l.photos?.length ? l.photos : [l.photoUrl]);
     setBestBefore(editId ? isoDay(new Date(l.bestBefore)) : isoDay(addDays(TEMPLATES[l.category].bestBeforeDays)));
   }, [fromQ.data, editId]);
@@ -108,7 +115,7 @@ export function ShareFood() {
   // K1: "Fill from photo" only when the server has an AI key.
   const aiQ = useQuery({ queryKey: ["ai-status"], queryFn: fetchAiStatus, staleTime: 5 * 60_000 });
   const autofill = useMutation({
-    mutationFn: () => suggestFromPhoto(photos[0]),
+    mutationFn: (file: File) => suggestFromPhoto(file),
     onSuccess: (s) => {
       applyTemplate(s.category);
       setTitle(s.title);
@@ -119,14 +126,26 @@ export function ShareFood() {
     },
   });
   const addPhotos = (files: FileList | null) => {
-    if (!files) return;
+    if (!files?.length) return;
+    const first = photos.length === 0 ? files[0] : null;
     setPhotos((ps) => [...ps, ...Array.from(files)].slice(0, MAX_PHOTOS));
+    // Fill from photo runs by itself on the first photo of a new listing; the button stays for a retry.
+    if (first && !editId && aiQ.data?.photoAutofill && !autofill.isPending) autofill.mutate(first);
   };
 
   const maxDate = origin === "homemade" ? isoDay(addDays(2)) : undefined;
   const allTicked = CHECKS.every((c) => checks[c.key]);
   const hasPhoto = photos.length > 0 || reusePhotos.length > 0;
-  const ready = hasPhoto && (!!editId || place === "home" || !!fridgeId) && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
+  const errors = {
+    photo: hasPhoto ? undefined : t("Add at least one photo."),
+    title: title.trim().length >= 3 ? undefined : t("Give it a short title (at least 3 letters)."),
+    origin: origin ? undefined : t("Choose Homemade, Packaged or Fresh produce."),
+    bestBefore: bestBefore ? undefined : t("Pick a best-before date."),
+    fridge: editId || place === "home" || fridgeId ? undefined : t("Pick a community fridge."),
+    checks: allTicked ? undefined : t("Tick all three safety checks."),
+  };
+  const ready = Object.values(errors).every((e) => !e);
+  const err = (k: keyof typeof errors) => (tried ? errors[k] : undefined);
 
   const m = useMutation({
     mutationFn: () => {
@@ -135,6 +154,7 @@ export function ShareFood() {
       for (const p of photos) f.append("photos", p);
       f.set("title", title.trim());
       f.set("description", description.trim());
+      if (pickupInstructions.trim() || editId) f.set("pickupInstructions", pickupInstructions.trim());
       if (editId) {
         f.set("dietaryTags", dietary.join(","));
         f.set("weightKg", weight);
@@ -177,7 +197,9 @@ export function ShareFood() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    setTried(true);
     if (ready) m.mutate();
+    else document.querySelector<HTMLElement>("[data-invalid='true']")?.scrollIntoView({ block: "center" });
   };
 
   return (
@@ -198,9 +220,9 @@ export function ShareFood() {
           ? t("We copied your earlier listing with fresh dates. Check it and post.")
           : t("Share in 30 seconds. Pick a category and we fill in the usual details for you.")}
       </p>
-      <form onSubmit={submit} className="space-y-5">
+      <form onSubmit={submit} noValidate className="space-y-5">
         <div>
-          <span className={labelCls}>{t("Photos (at least 1, up to {n})", { n: MAX_PHOTOS })}</span>
+          <span className={labelCls} data-invalid={!!err("photo")}>{t("Photos (at least 1, up to {n})", { n: MAX_PHOTOS })}<Req /></span>
           {shownPhotos.length > 0 ? (
             <div className="grid grid-cols-4 gap-2">
               {shownPhotos.map((src, i) => (
@@ -237,13 +259,14 @@ export function ShareFood() {
               <input type="file" accept="image/*" capture="environment" multiple className="sr-only" aria-label={t("Photo")} onChange={(e) => addPhotos(e.target.files)} />
             </label>
           )}
+          <FieldError msg={err("photo")} />
         </div>
 
         {aiQ.data?.photoAutofill && photos.length > 0 && (
           <div className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-stone-200">
             <button
               type="button"
-              onClick={() => autofill.mutate()}
+              onClick={() => autofill.mutate(photos[0])}
               disabled={autofill.isPending}
               className="min-h-[44px] w-full rounded-xl bg-accent px-4 font-bold text-stone-900 hover:brightness-105 disabled:opacity-60"
             >
@@ -260,12 +283,13 @@ export function ShareFood() {
         )}
 
         <div>
-          <label className={labelCls} htmlFor="title">{t("What is it?")}</label>
-          <input id="title" className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={TEMPLATES[category].placeholder} maxLength={80} />
+          <label className={labelCls} htmlFor="title">{t("What is it?")}<Req /></label>
+          <input id="title" aria-required="true" aria-invalid={!!err("title")} data-invalid={!!err("title")} className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={TEMPLATES[category].placeholder} maxLength={80} />
+          <FieldError msg={err("title")} />
         </div>
 
         <fieldset>
-          <legend className={labelCls}>{t("Category")}</legend>
+          <legend className={labelCls}>{t("Category")}<Req /></legend>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(CATEGORY) as Category[]).map((c) => (
               <button type="button" key={c} className={chipCls(category === c)} onClick={() => applyTemplate(c)} aria-pressed={category === c}>
@@ -276,7 +300,7 @@ export function ShareFood() {
         </fieldset>
 
         <fieldset>
-          <legend className={labelCls}>{t("Label (required)")}</legend>
+          <legend className={labelCls} data-invalid={!!err("origin")}>{t("Label")}<Req /></legend>
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(ORIGIN) as Origin[]).map((o) => (
               <button
@@ -291,11 +315,12 @@ export function ShareFood() {
             ))}
           </div>
           {origin === "homemade" && <p className="mt-1 text-xs text-stone-500">{t("Homemade food stays on the map for up to 48 hours.")}</p>}
+          <FieldError msg={err("origin")} />
         </fieldset>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls} htmlFor="bb">{t("Best before (required)")}</label>
+            <label className={labelCls} htmlFor="bb">{t("Best before")}<Req /></label>
             <input
               id="bb"
               type="date"
@@ -304,11 +329,12 @@ export function ShareFood() {
               min={isoDay(new Date())}
               max={maxDate}
               onChange={(e) => setBestBefore(e.target.value)}
-              required
+              aria-required="true"
             />
+            <FieldError msg={err("bestBefore")} />
           </div>
           <div>
-            <span className={labelCls}>{t("Portions")}</span>
+            <span className={labelCls}>{t("Portions")}<Req /></span>
             <div className="flex items-center justify-between rounded-xl border border-stone-300 bg-white">
               <button type="button" className="h-12 w-12 text-xl" onClick={() => setPortions((p) => Math.max(1, p - 1))} aria-label={t("Fewer portions")}>−</button>
               <span className="text-base font-semibold" aria-live="polite">{portions}</span>
@@ -321,7 +347,7 @@ export function ShareFood() {
           <p className="text-xs text-stone-500">{t("The pickup place stays the same. To move it, use Post again.")}</p>
         ) : (
         <fieldset>
-          <legend className={labelCls}>{t("Where")}</legend>
+          <legend className={labelCls}>{t("Where")}<Req /></legend>
           <div className="grid grid-cols-2 gap-2">
             {([["home", `🏠 ${t("From my home")}`], ["fridge", t("Drop at a community fridge")]] as const).map(([v, label]) => (
               <button type="button" key={v} onClick={() => setPlace(v)} aria-pressed={place === v} className={`min-h-[52px] rounded-xl px-2 text-sm font-semibold ${place === v ? "bg-brand-dark text-white" : "bg-white ring-1 ring-stone-300"}`}>
@@ -341,13 +367,14 @@ export function ShareFood() {
                 ))}
               </select>
               {fridgesQ.data?.length === 0 && <p className="mt-1 text-xs text-stone-500">{t("No approved fridges within 10 km of your home pin.")}</p>}
+              <FieldError msg={err("fridge")} />
             </div>
           )}
         </fieldset>
         )}
 
         <fieldset>
-          <legend className={labelCls}>{t("Pickup")}</legend>
+          <legend className={labelCls}>{t("Pickup time")}<Req /></legend>
           <div className="flex flex-wrap gap-2">
             {editId && fromQ.data && (
               <button type="button" className={chipCls(windowIdx === -1)} onClick={() => setWindowIdx(-1)} aria-pressed={windowIdx === -1}>
@@ -376,10 +403,19 @@ export function ShareFood() {
           </div>
         </fieldset>
 
+        <div>
+          <label className={labelCls} htmlFor="desc">{t("Description")} <span className="font-normal text-stone-500">({t("optional")})</span></label>
+          <textarea id="desc" rows={3} maxLength={500} className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("What it is, ingredients, how it was stored…")} />
+        </div>
+
+        <div>
+          <label className={labelCls} htmlFor="pickup-notes">{t("Pickup instructions")} <span className="font-normal text-stone-500">({t("optional")})</span></label>
+          <textarea id="pickup-notes" rows={2} maxLength={300} className={inputCls} value={pickupInstructions} onChange={(e) => setPickupInstructions(e.target.value)} placeholder={t("e.g. Ring the bell for Weber, 2nd floor. Bring a bag.")} />
+          <p className="mt-1 text-xs text-stone-500">{t("Only the neighbour whose pickup you confirm sees this.")}</p>
+        </div>
+
         <details className="rounded-xl bg-white p-3 ring-1 ring-stone-200" open={!!sourceId}>
-          <summary className="cursor-pointer text-sm font-semibold text-stone-700">{t("Description, allergens, weight and handover spot (optional)")}</summary>
-          <label className={`${labelCls} mt-3`} htmlFor="desc">{t("Description")}</label>
-          <textarea id="desc" rows={2} maxLength={500} className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("Anything neighbours should know: ingredients, how it was stored…")} />
+          <summary className="cursor-pointer text-sm font-semibold text-stone-700">{t("Allergens, weight and handover spot (optional)")}</summary>
           <label className={`${labelCls} mt-3`} htmlFor="weight">{t("About how much does it weigh? (kg)")}</label>
           <input id="weight" type="number" inputMode="decimal" min={0.05} max={50} step={0.1} className={inputCls} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder={t("e.g. 0.8")} />
           <span className={`${labelCls} mt-3`}>{t("Allergens")}</span>
@@ -404,7 +440,7 @@ export function ShareFood() {
         </details>
 
         <fieldset className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
-          <legend className="px-1 text-sm font-bold text-stone-800">{t("Safety checklist")}</legend>
+          <legend className="px-1 text-sm font-bold text-stone-800" data-invalid={!!err("checks")}>{t("Safety checklist")}<Req /></legend>
           {CHECKS.map((c) => (
             <label key={c.key} className="flex min-h-[44px] cursor-pointer items-center gap-3">
               <input
@@ -416,17 +452,22 @@ export function ShareFood() {
               <span className="text-base">{c.label}</span>
             </label>
           ))}
+          <FieldError msg={err("checks")} />
         </fieldset>
 
         <ErrorNote error={m.error} />
-        <button className={primaryBtn} disabled={!ready || !editable || m.isPending}>
+        {tried && !ready && (
+          <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">
+            <p className="font-semibold">{t("Please fix these before posting:")}</p>
+            <ul className="mt-1 list-disc pl-5">
+              {Object.values(errors).filter(Boolean).map((e) => <li key={e}>{e}</li>)}
+            </ul>
+          </div>
+        )}
+        <button className={primaryBtn} disabled={!editable || m.isPending}>
           {editId ? (m.isPending ? t("Saving…") : t("Save changes")) : m.isPending ? t("Posting…") : t("Post to the map")}
         </button>
-        {!ready && (
-          <p className="text-center text-xs text-stone-500">
-            {t("Needs a photo, a title, a label, a date and all three safety ticks.")}
-          </p>
-        )}
+        <p className="text-center text-xs text-stone-500"><Req /> {t("required")}</p>
       </form>
     </Page>
   );

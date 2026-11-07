@@ -50,7 +50,7 @@ schedules.post(
     const s = await prisma.listingSchedule.create({
       data: {
         userId: me, title: l.title, description: l.description, category: l.category, origin: l.origin, allergens: l.allergens,
-        dietaryTags: l.dietaryTags, portions: l.portions, weightKg: l.weightKg, handoverSpot: l.handoverSpot,
+        dietaryTags: l.dietaryTags, portions: l.portions, weightKg: l.weightKg, handoverSpot: l.handoverSpot, pickupInstructions: l.pickupInstructions,
         photos: l.photos.length ? l.photos : [l.photoUrl], daysOfWeek: b.daysOfWeek, time: b.time, pickupHours: b.pickupHours, bestBeforeDays: b.bestBeforeDays,
       },
     });

@@ -37,6 +37,8 @@ export interface Listing {
   lat?: number;
   lng?: number;
   handoverSpot?: string | null;
+  /** Only for the giver and the confirmed receiver. */
+  pickupInstructions?: string | null;
 }
 
 export class ApiError extends Error {
@@ -325,7 +327,7 @@ export interface BulkClaim {
   organization: { id: string; name: string }; myRole: OrgRole;
   items: {
     id: string; claimId: string; claimStatus: ClaimStatus; isCollected: boolean; collectedAt: string | null;
-    listing: { id: string; title: string; photoUrl: string; portions: number; pickupUntil: string; giver: { id: string; name: string }; distanceM: number; lat?: number; lng?: number; handoverSpot?: string | null };
+    listing: { id: string; title: string; photoUrl: string; portions: number; pickupUntil: string; giver: { id: string; name: string }; distanceM: number; lat?: number; lng?: number; handoverSpot?: string | null; pickupInstructions?: string | null };
   }[];
 }
 export const createBulkClaim = (orgId: string, b: { name: string; notes?: string; scheduledPickupDate: string; listingIds: string[] }) =>
