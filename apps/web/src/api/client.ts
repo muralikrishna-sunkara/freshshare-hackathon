@@ -165,6 +165,8 @@ export const claimAction = (id: string, action: "confirm" | "collected" | "cance
   api<{ claim: Claim }>(`/claims/${id}/${action}`, { method: "POST" }).then((r) => r.claim);
 
 export const createListing = (form: FormData) => api<{ listing: Listing }>("/listings", { method: "POST", body: form }).then((r) => r.listing);
+export const updateListing = (id: string, form: FormData) =>
+  api<{ listing: Listing }>(`/listings/${encodeURIComponent(id)}`, { method: "PATCH", body: form }).then((r) => r.listing);
 
 export const rateClaim = (id: string, stars: number, note?: string) =>
   api<{ claim: Claim }>(`/claims/${id}/ratings`, json({ stars, note })).then((r) => r.claim);

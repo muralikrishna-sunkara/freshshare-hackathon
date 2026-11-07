@@ -12,6 +12,7 @@ import { Empty, Skeleton, Success } from "../components/States";
 import { DEMO_CENTRE, useLocation } from "../hooks/useLocation";
 import { useMe } from "../hooks/useMe";
 import { FILL, formatDistance, FRIDGE_KIND, timeAgo } from "../lib/format";
+import { Directions } from "../components/Directions";
 import { FridgeIcon, fridgeSvg } from "../components/FridgeIcon";
 
 const RADIUS = 10000;
@@ -120,9 +121,7 @@ export function FridgePage() {
             <p className="text-sm text-stone-600">Open: {f.openingHours}</p>
             {f.description && <p className="pt-2 text-stone-700">{f.description}</p>}
             {f.accessNotes && <p className="text-sm text-stone-600"><strong>Access:</strong> {f.accessNotes}</p>}
-            <a className="inline-block pt-2 text-sm font-semibold text-brand-dark underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/directions?to=${f.lat}%2C${f.lng}`}>
-              Directions
-            </a>
+            <div className="pt-2"><Directions lat={f.lat} lng={f.lng} /></div>
           </section>
           <div className="h-56 overflow-hidden rounded-2xl ring-1 ring-stone-200">
             <MapContainer center={[f.lat, f.lng]} zoom={16} className="h-full w-full" zoomControl={false}>

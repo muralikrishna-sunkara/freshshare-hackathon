@@ -33,6 +33,11 @@ export function ListingActions({ listing }: { listing: Listing }) {
         <Link to="/pickups" className="block rounded-xl bg-stone-100 p-3 text-center text-sm font-semibold">
           This is your listing · see requests in My pickups
         </Link>
+        {(d.status ?? listing.status) === "available" && (
+          <Link to={`/share?edit=${listing.id}`} className="block rounded-xl bg-brand-dark p-3 text-center text-sm font-bold text-white">
+            ✏️ Edit listing
+          </Link>
+        )}
         <Link to={`/share?from=${listing.id}`} className="block rounded-xl p-3 text-center text-sm font-semibold text-brand-dark ring-1 ring-stone-300">
           Post again
         </Link>

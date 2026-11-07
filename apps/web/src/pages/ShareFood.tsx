@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { createListing, fetchFridges, fetchListing, type Category, type DietaryTag, type Origin } from "../api/client";
+import { createListing, fetchFridges, fetchListing, updateListing, type Category, type DietaryTag, type Origin } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { CATEGORY, DIETARY, ORIGIN } from "../lib/format";
-import {  } from "../components/FridgeIcon";
 
 const MAX_PHOTOS = 4;
 
@@ -46,7 +45,10 @@ export function ShareFood() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [params] = useSearchParams();
-  const fromId = params.get("from");
+  // ?edit=<id>: change one of my listings in place; ?from=<id>: "Post again" as a new listing.
+  const editId = params.get("edit");
+  const fromId = editId ? null : params.get("from");
+  const sourceId = editId ?? fromId;
   const [photos, setPhotos] = useState<File[]>([]);
   const [reusePhotos, setReusePhotos] = useState<string[]>([]);
   const [title, setTitle] = useState("");
@@ -64,7 +66,8 @@ export function ShareFood() {
   const [category, setCategory] = useState<Category>("leftovers");
   const [origin, setOrigin] = useState<Origin | null>(null);
   const [bestBefore, setBestBefore] = useState(isoDay(addDays(1)));
-  const [windowIdx, setWindowIdx] = useState(1);
+  // -1 = keep the current pickup time (edit mode only).
+  const [windowIdx, setWindowIdx] = useState(editId ? -1 : 1);
   const [portions, setPortions] = useState(1);
   const [allergens, setAllergens] = useState<string[]>([]);
   const [handoverSpot, setHandoverSpot] = useState("");
@@ -74,7 +77,7 @@ export function ShareFood() {
   const shownPhotos = previews.length ? previews : reusePhotos;
 
   // "Post again": copy fields and photos from one of my earlier listings, with fresh dates.
-  const fromQ = useQuery({ queryKey: ["listing", fromId, "repost"], queryFn: () => fetchListing(fromId!), enabled: !!fromId });
+  const fromQ = useQuery({ queryKey: ["listing", sourceId, editId ? "edit" : "repost"], queryFn: () => fetchListing(sourceId!), enabled: !!sourceId });
   useEffect(() => {
     const l = fromQ.data;
     if (!l || !l.isMine) return;
@@ -88,8 +91,9 @@ export function ShareFood() {
     setWeight(l.weightKg ? String(l.weightKg) : "");
     setHandoverSpot(l.handoverSpot ?? "");
     setReusePhotos(l.photos?.length ? l.photos : [l.photoUrl]);
-    setBestBefore(isoDay(addDays(TEMPLATES[l.category].bestBeforeDays)));
-  }, [fromQ.data]);
+    setBestBefore(editId ? isoDay(new Date(l.bestBefore)) : isoDay(addDays(TEMPLATES[l.category].bestBeforeDays)));
+  }, [fromQ.data, editId]);
+  const editable = !editId || (fromQ.data?.isMine && fromQ.data.status === "available");
 
   const applyTemplate = (c: Category) => {
     setCategory(c);
@@ -108,11 +112,27 @@ export function ShareFood() {
   const maxDate = origin === "homemade" ? isoDay(addDays(2)) : undefined;
   const allTicked = CHECKS.every((c) => checks[c.key]);
   const hasPhoto = photos.length > 0 || reusePhotos.length > 0;
-  const ready = hasPhoto && (place === "home" || !!fridgeId) && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
+  const ready = hasPhoto && (!!editId || place === "home" || !!fridgeId) && title.trim().length >= 3 && !!origin && !!bestBefore && allTicked;
 
   const m = useMutation({
     mutationFn: () => {
       const now = new Date();
+      const f = new FormData();
+      for (const p of photos) f.append("photos", p);
+      f.set("title", title.trim());
+      f.set("description", description.trim());
+      if (editId) {
+        f.set("dietaryTags", dietary.join(","));
+        f.set("weightKg", weight);
+        f.set("handoverSpot", handoverSpot.trim());
+      }
+      f.set("category", category);
+      f.set("origin", origin!);
+      f.set("bestBefore", new Date(`${bestBefore}T23:59:00`).toISOString());
+      f.set("portions", String(portions));
+      f.set("allergens", allergens.join(","));
+      for (const c of CHECKS) f.set(c.key, String(!!checks[c.key]));
+      if (editId && windowIdx === -1) return updateListing(editId, f);
       const w = WINDOWS[windowIdx];
       let until = new Date(now.getTime() + w.hours * 3600_000);
       if (w.hours === -1) {
@@ -121,29 +141,22 @@ export function ShareFood() {
         until.setHours(20, 0, 0, 0);
         if (now.getHours() >= 18) until.setDate(until.getDate() + 1);
       }
-      const f = new FormData();
-      for (const p of photos) f.append("photos", p);
+      f.set("pickupFrom", now.toISOString());
+      f.set("pickupUntil", until.toISOString());
+      if (editId) return updateListing(editId, f);
+      if (!description.trim()) f.delete("description");
       if (!photos.length && fromId) f.set("fromListingId", fromId);
-      f.set("title", title.trim());
-      if (description.trim()) f.set("description", description.trim());
       if (dietary.length) f.set("dietaryTags", dietary.join(","));
       if (weight) f.set("weightKg", weight);
       if (place === "fridge" && fridgeId) f.set("fridgeId", fridgeId);
-      f.set("category", category);
-      f.set("origin", origin!);
-      f.set("bestBefore", new Date(`${bestBefore}T23:59:00`).toISOString());
-      f.set("pickupFrom", now.toISOString());
-      f.set("pickupUntil", until.toISOString());
-      f.set("portions", String(portions));
-      f.set("allergens", allergens.join(","));
       if (handoverSpot.trim()) f.set("handoverSpot", handoverSpot.trim());
-      for (const c of CHECKS) f.set(c.key, String(!!checks[c.key]));
       return createListing(f);
     },
     onSuccess: (l) => {
       qc.invalidateQueries({ queryKey: ["listings"] });
       qc.invalidateQueries({ queryKey: ["me"] });
       qc.invalidateQueries({ queryKey: ["my-listings"] });
+      qc.invalidateQueries({ queryKey: ["listing", l.id] });
       nav(`/map?listing=${l.id}`, { replace: true });
     },
   });
@@ -154,9 +167,20 @@ export function ShareFood() {
   };
 
   return (
-    <Page title={fromId ? "Post again" : "Share food"}>
+    <Page title={editId ? "Edit listing" : fromId ? "Post again" : "Share food"}>
+      {editId && fromQ.data && !editable && (
+        <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+          {!fromQ.data.isMine
+            ? "Only the person who posted this food can edit it."
+            : fromQ.data.status === "reserved"
+              ? "Someone has reserved this food. Decline or finish that pickup before changing the listing."
+              : "This listing can't be changed any more. Use Post again to share it once more."}
+        </p>
+      )}
       <p className="mb-4 rounded-xl bg-brand-light p-3 text-sm text-brand-dark">
-        {fromId
+        {editId
+          ? "Change what you need and save. Neighbours see the update straight away."
+          : fromId
           ? "We copied your earlier listing with fresh dates. Check it and post."
           : "Share in 30 seconds. Pick a category and we fill in the usual details for you."}
       </p>
@@ -259,6 +283,9 @@ export function ShareFood() {
           </div>
         </div>
 
+        {editId ? (
+          <p className="text-xs text-stone-500">The pickup place stays the same. To move it, use Post again.</p>
+        ) : (
         <fieldset>
           <legend className={labelCls}>Where</legend>
           <div className="grid grid-cols-2 gap-2">
@@ -283,10 +310,16 @@ export function ShareFood() {
             </div>
           )}
         </fieldset>
+        )}
 
         <fieldset>
           <legend className={labelCls}>Pickup</legend>
           <div className="flex flex-wrap gap-2">
+            {editId && fromQ.data && (
+              <button type="button" className={chipCls(windowIdx === -1)} onClick={() => setWindowIdx(-1)} aria-pressed={windowIdx === -1}>
+                Keep until {new Date(fromQ.data.pickupUntil).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+              </button>
+            )}
             {WINDOWS.map((w, i) => (
               <button type="button" key={w.label} className={chipCls(windowIdx === i)} onClick={() => setWindowIdx(i)} aria-pressed={windowIdx === i}>
                 {w.label}
@@ -309,7 +342,7 @@ export function ShareFood() {
           </div>
         </fieldset>
 
-        <details className="rounded-xl bg-white p-3 ring-1 ring-stone-200" open={!!fromId}>
+        <details className="rounded-xl bg-white p-3 ring-1 ring-stone-200" open={!!sourceId}>
           <summary className="cursor-pointer text-sm font-semibold text-stone-700">Description, allergens, weight and handover spot (optional)</summary>
           <label className={`${labelCls} mt-3`} htmlFor="desc">Description</label>
           <textarea id="desc" rows={2} maxLength={500} className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Anything neighbours should know: ingredients, how it was stored…" />
@@ -352,8 +385,8 @@ export function ShareFood() {
         </fieldset>
 
         <ErrorNote error={m.error} />
-        <button className={primaryBtn} disabled={!ready || m.isPending}>
-          {m.isPending ? "Posting…" : "Post to the map"}
+        <button className={primaryBtn} disabled={!ready || !editable || m.isPending}>
+          {editId ? (m.isPending ? "Saving…" : "Save changes") : m.isPending ? "Posting…" : "Post to the map"}
         </button>
         {!ready && (
           <p className="text-center text-xs text-stone-500">

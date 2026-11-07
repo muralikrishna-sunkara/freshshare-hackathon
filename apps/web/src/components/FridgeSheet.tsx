@@ -4,6 +4,7 @@ import { checkInFridge, type Fridge, type FridgeState } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { formatDistance, timeAgo } from "../lib/format";
 import { ErrorNote } from "./Page";
+import { Directions } from "./Directions";
 import { FridgeIcon } from "./FridgeIcon";
 
 const STATE: Record<FridgeState, { label: string; tone: string; emoji: string }> = {
@@ -31,6 +32,7 @@ export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
         <h2 className="text-xl font-bold">{f.name}</h2>
         <p className="text-sm text-stone-600">{f.address} · {formatDistance(f.distanceM)} away</p>
         <p className="text-sm text-stone-600">Open: {f.openingHours}</p>
+        <Directions lat={f.lat} lng={f.lng} />
         {f.lastCheckIn ? (
           <p className={`rounded-xl p-3 text-sm font-semibold ${STATE[f.lastCheckIn.state].tone}`}>
             Last checked {timeAgo(f.lastCheckIn.at)}: {STATE[f.lastCheckIn.state].label.toLowerCase()}

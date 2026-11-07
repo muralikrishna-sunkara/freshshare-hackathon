@@ -11,7 +11,7 @@ export const fridges = Router();
 const q = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
-  radius: z.coerce.number().int().min(100).max(20000).default(2000),
+  radius: z.coerce.number().int().min(100).max(50000).default(2000),
 });
 
 type FridgeRow = Awaited<ReturnType<typeof prisma.fridge.findMany<{ include: { checkIns: true } }>>>[number];

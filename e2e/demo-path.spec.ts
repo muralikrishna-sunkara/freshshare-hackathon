@@ -16,6 +16,10 @@ async function signIn(browser: Browser, email: string): Promise<Page> {
 
 test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", async ({ browser }) => {
   const sara = await signIn(browser, "sara@demo.freshshare.de");
+  // Find food opens as a list with any distance; the pitch shows the 2 km map.
+  await expect(sara.getByRole("heading", { name: "Browse food" })).toBeVisible();
+  await sara.getByRole("button", { name: "📍 Map view" }).click();
+  await sara.getByRole("button", { name: "2 km", exact: true }).click();
   await expect(sara.getByText("8 listings within 2 km")).toBeVisible();
   const banner = sara.getByText(/This week your neighbourhood saved \d+ portions/);
   await expect(banner).toBeVisible();
@@ -36,7 +40,7 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   await sheet.getByRole("button", { name: "Reserve" }).click();
   await expect(sara).toHaveURL(/\/pickups\//);
   await expect(sara.getByRole("status")).toContainText("Waiting for Anna to confirm");
-  await expect(sara.getByText("Open in maps")).toHaveCount(0);
+  await expect(sara.getByRole("link", { name: "Google Maps" })).toHaveCount(0);
   await sara.getByRole("button", { name: "On my way" }).click();
   await expect(sara.getByLabel("Chat").locator("p").getByText("On my way")).toBeVisible();
 
@@ -53,7 +57,7 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   // Back on Sara's phone: exact location, collect, rate
   await sara.reload();
   await expect(sara.getByRole("status")).toContainText("Confirmed");
-  await expect(sara.getByText("Open in maps")).toBeVisible();
+  await expect(sara.getByRole("group", { name: "Directions" }).getByRole("link", { name: "Google Maps" })).toHaveAttribute("href", /destination=49\.\d+,11\.\d+/);
   await expect(sara.getByLabel("Chat").locator("p").getByText("See you soon!")).toBeVisible();
   await sara.getByRole("button", { name: "Mark collected" }).click();
   await expect(sara.getByRole("status")).toContainText("Collected");

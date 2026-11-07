@@ -47,7 +47,7 @@ test("post with a template and two photos, privacy holds, decline, live chat, po
 
   // Filters are kept in the URL
   await visitor.goto("/map?km=5&diet=vegetarian");
-  await expect(visitor.getByText(/listings? within 5 km/)).toBeVisible();
+  await expect(visitor.getByText(/listings? found within 5 km/)).toBeVisible();
   await expect(visitor.getByLabel("Dietary")).toHaveValue("vegetarian");
 
   // Sara reports it, reserves it; Anna declines
