@@ -21,3 +21,6 @@ apps/api/uploads/
 *.tsbuildinfo
 test-results/
 playwright-report/
+
+# Demo video output (npm run demo:video)
+demo/out/
