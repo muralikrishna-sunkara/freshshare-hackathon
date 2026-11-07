@@ -17,7 +17,7 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
       </div>
       <div className={compact ? "min-w-0 flex-1 py-0.5" : "space-y-3 p-4"}>
         <div className="flex flex-wrap gap-1.5">
-          <span className={`${chip} bg-accent-light text-[#9a5418]`}>Best before {formatDay(l.bestBefore)}</span>
+          <span className={`${chip} bg-accent-light text-[#7a560f]`}>Best before {formatDay(l.bestBefore)}</span>
           <span className={`${chip} bg-brand-light text-brand-dark`}>{ORIGIN[l.origin]}</span>
           {!compact && (
             <span className={`${chip} bg-stone-100 text-stone-700`}>

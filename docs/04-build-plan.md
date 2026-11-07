@@ -101,7 +101,7 @@ Build the map home screen from docs/02-product-spec.md:
 - List/map toggle; list sorted by distance.
 - Impact banner at the top (placeholder number for now).
 - Empty state: "Nothing within 2 km yet. There are N community fridges nearby."
-Brand colours: green #6b9f5e, orange #e89344. Mobile-first at 390 px, then check desktop. Use TanStack Query.
+Brand colours: green #6b9f5e, orange #e89344. Responsive web app: design for desktop browsers (sidebar list + map), and check phone browsers at 390 px. Use TanStack Query.
 Check with the seed: 8 pins within 2 km, Priya's dal has no Verified badge, the soup never shows. Show me screenshots at phone width, then commit.
 ```
 

@@ -22,7 +22,9 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   const portionsBefore = Number((await banner.innerText()).match(/saved (\d+) portions/)![1]);
 
   // Open the lasagne from the list view (pins can overlap)
-  await sara.getByRole("tab", { name: "list" }).click();
+  // Desktop shows the list in the sidebar; on a phone switch to the list view.
+  const listTab = sara.getByRole("tab", { name: "list" });
+  if (await listTab.isVisible()) await listTab.click();
   await sara.getByRole("heading", { name: "Vegetable lasagne, 3 portions" }).click();
   const sheet = sara.getByRole("dialog");
   await expect(sheet.getByRole("img", { name: "Vegetable lasagne, 3 portions" })).toBeVisible();
@@ -36,13 +38,13 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   await expect(sara.getByRole("status")).toContainText("Waiting for Anna to confirm");
   await expect(sara.getByText("Open in maps")).toHaveCount(0);
   await sara.getByRole("button", { name: "On my way" }).click();
-  await expect(sara.getByLabel("Chat").getByText("On my way")).toBeVisible();
+  await expect(sara.getByLabel("Chat").locator("p").getByText("On my way")).toBeVisible();
 
   // Anna confirms on the laptop
   const anna = await signIn(browser, "anna@demo.freshshare.de");
   await anna.goto("/pickups");
   await anna.getByText("Needs your confirmation").click();
-  await expect(anna.getByLabel("Chat").getByText("On my way")).toBeVisible(); // chat reached Anna
+  await expect(anna.getByLabel("Chat").locator("p").getByText("On my way")).toBeVisible(); // chat reached Anna
   await anna.getByLabel("Message").fill("See you soon!");
   await anna.getByRole("button", { name: "Send" }).click();
   await anna.getByRole("button", { name: "Confirm pickup" }).click();
@@ -52,7 +54,7 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   await sara.reload();
   await expect(sara.getByRole("status")).toContainText("Confirmed");
   await expect(sara.getByText("Open in maps")).toBeVisible();
-  await expect(sara.getByLabel("Chat").getByText("See you soon!")).toBeVisible();
+  await expect(sara.getByLabel("Chat").locator("p").getByText("See you soon!")).toBeVisible();
   await sara.getByRole("button", { name: "Mark collected" }).click();
   await expect(sara.getByRole("status")).toContainText("Collected");
   await sara.getByRole("radio", { name: "5 stars" }).click();

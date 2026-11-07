@@ -1,8 +1,8 @@
 import type { Category, Origin } from "../api/client";
 
 export const CATEGORY: Record<Category, { label: string; color: string; emoji: string }> = {
-  leftovers: { label: "Leftovers", color: "#e89344", emoji: "🍲" },
-  fruit_veg: { label: "Fruit & veg", color: "#6b9f5e", emoji: "🥕" },
+  leftovers: { label: "Leftovers", color: "#d9a23c", emoji: "🍲" },
+  fruit_veg: { label: "Fruit & veg", color: "#2e5e4e", emoji: "🥕" },
   bread: { label: "Bread", color: "#b7853f", emoji: "🍞" },
   packaged: { label: "Packaged", color: "#5b7db1", emoji: "📦" },
   dairy: { label: "Dairy", color: "#8e6bb8", emoji: "🥛" },

@@ -21,7 +21,7 @@ const fridgeIcon = L.divIcon({
   className: "",
   iconSize: [32, 32],
   iconAnchor: [16, 16],
-  html: `<div style="width:32px;height:32px;border-radius:9px;background:#fff;border:2.5px solid #3e6b35;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 1px 3px rgba(0,0,0,.3)">🧊</div>`,
+  html: `<div style="width:32px;height:32px;border-radius:9px;background:#fff;border:2.5px solid #1f4337;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 1px 3px rgba(0,0,0,.3)">🧊</div>`,
 });
 
 function Recentre({ lat, lng, radius }: { lat: number; lng: number; radius: number }) {
@@ -71,7 +71,7 @@ export function ListingMap(props: {
       />
       <Recentre lat={centre.lat} lng={centre.lng} radius={radius} />
       <FocusOn focus={props.focus} />
-      <Circle center={[centre.lat, centre.lng]} radius={radius} pathOptions={{ color: "#6b9f5e", weight: 2, fillOpacity: 0.06, dashArray: "6 6" }} />
+      <Circle center={[centre.lat, centre.lng]} radius={radius} pathOptions={{ color: "#2e5e4e", weight: 2, fillOpacity: 0.06, dashArray: "6 6" }} />
       {props.fridges.map((f) => (
         <Marker
           key={f.id}

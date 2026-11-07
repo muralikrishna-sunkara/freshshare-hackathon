@@ -14,7 +14,7 @@ const exactIcon = L.divIcon({
   className: "",
   iconSize: [30, 30],
   iconAnchor: [15, 15],
-  html: `<div style="width:30px;height:30px;border-radius:50%;background:#3e6b35;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
+  html: `<div style="width:30px;height:30px;border-radius:50%;background:#1f4337;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
 });
 
 function statusLine(c: Claim): { text: string; tone: string } {
@@ -22,8 +22,8 @@ function statusLine(c: Claim): { text: string; tone: string } {
   const s: Record<ClaimStatus, { text: string; tone: string }> = {
     pending:
       c.role === "receiver"
-        ? { text: `Waiting for ${giver} to confirm · held until ${formatTime(c.holdUntil)}`, tone: "bg-accent-light text-[#9a5418]" }
-        : { text: `${c.receiver.name} wants this · confirm before ${formatTime(c.holdUntil)}`, tone: "bg-accent-light text-[#9a5418]" },
+        ? { text: `Waiting for ${giver} to confirm · held until ${formatTime(c.holdUntil)}`, tone: "bg-accent-light text-[#7a560f]" }
+        : { text: `${c.receiver.name} wants this · confirm before ${formatTime(c.holdUntil)}`, tone: "bg-accent-light text-[#7a560f]" },
     confirmed: { text: "Confirmed · see the pickup location below", tone: "bg-brand-light text-brand-dark" },
     collected: { text: "Collected · thank you for saving food!", tone: "bg-brand-light text-brand-dark" },
     cancelled: { text: "Cancelled", tone: "bg-stone-100 text-stone-600" },
@@ -47,15 +47,16 @@ export function ClaimPage() {
     },
   });
 
-  if (q.isLoading) return <Page title="Pickup" back="/pickups"><p className="text-stone-500">Loading…</p></Page>;
-  if (!q.data) return <Page title="Pickup" back="/pickups"><ErrorNote error={q.error} /></Page>;
+  if (q.isLoading) return <Page title="Pickup"><p className="text-stone-500">Loading…</p></Page>;
+  if (!q.data) return <Page title="Pickup"><ErrorNote error={q.error} /></Page>;
   const c = q.data;
   const l = c.listing;
   const st = statusLine(c);
   const active = c.status === "pending" || c.status === "confirmed";
 
   return (
-    <Page title="Pickup" back="/pickups">
+    <Page title="Pickup" wide>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <div className="space-y-4">
         <p className={`rounded-xl p-3 text-sm font-semibold ${st.tone}`} role="status">{st.text}</p>
         {c.status === "collected" && <RateForm claim={c} />}
@@ -68,8 +69,6 @@ export function ClaimPage() {
           <h2 className="mb-2 text-sm font-bold text-stone-700">{c.role === "receiver" ? "Giver" : "Receiver"}</h2>
           <GiverRow giver={c.role === "receiver" ? l.giver : c.receiver} />
         </section>
-
-        <Chat claim={c} />
 
         <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
           <h2 className="mb-2 text-sm font-bold text-stone-700">Pickup location</h2>
@@ -115,6 +114,10 @@ export function ClaimPage() {
             Cancel pickup
           </button>
         )}
+      </div>
+      <div className="lg:sticky lg:top-6">
+        <Chat claim={c} />
+      </div>
       </div>
     </Page>
   );

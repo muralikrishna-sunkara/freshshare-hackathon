@@ -26,7 +26,7 @@ api on port 4000 with `GET /api/health` · web Caddy on 80 with `APP_DOMAIN=:80`
 - API errors: `{ "error": { "code": "...", "message": "..." } }` with the right HTTP status.
 - Never return exact `lat`/`lng` of a listing to anyone except the giver or the confirmed receiver; list endpoints return `publicLat`/`publicLng`.
 - Strip EXIF from uploads (sharp does this by default when re-encoding).
-- Brand colours: green `#6b9f5e` (primary), orange `#e89344` (accent). Mobile-first at 390 px.
+- Brand colours: green `#6b9f5e` (primary), orange `#e89344` (accent). Responsive **web app**: desktop browsers first (1440 px: top nav, list sidebar + map + detail panel), and it must still work in phone browsers at 390 px. Not a native mobile app.
 - Demo-only shortcuts (e.g. phone verification code `123456`) must be marked `// DEMO` in code and labelled in the UI.
 - Add or update a test for every API behaviour you change. Run `npm test` before saying a block is done.
 - Commit at the end of every block with a clear message.

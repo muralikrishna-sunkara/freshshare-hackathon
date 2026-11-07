@@ -20,7 +20,7 @@ function Row({ c }: { c: Claim }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{c.listing.title}</p>
         <p className="text-sm text-stone-600">{who}</p>
-        <p className={`text-xs font-semibold ${needsMe ? "text-[#9a5418]" : "text-stone-500"}`}>{needsMe ? "Needs your confirmation" : LABEL[c.status]}</p>
+        <p className={`text-xs font-semibold ${needsMe ? "text-[#7a560f]" : "text-stone-500"}`}>{needsMe ? "Needs your confirmation" : LABEL[c.status]}</p>
       </div>
     </Link>
   );

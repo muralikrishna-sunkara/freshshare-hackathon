@@ -8,7 +8,7 @@ import { ErrorNote } from "./Page";
 const STATE: Record<FridgeState, { label: string; tone: string; emoji: string }> = {
   stocked: { label: "Stocked", tone: "bg-brand-light text-brand-dark", emoji: "✅" },
   empty: { label: "Empty", tone: "bg-stone-100 text-stone-700", emoji: "🫙" },
-  needs_cleaning: { label: "Needs cleaning", tone: "bg-accent-light text-[#9a5418]", emoji: "🧽" },
+  needs_cleaning: { label: "Needs cleaning", tone: "bg-accent-light text-[#7a560f]", emoji: "🧽" },
 };
 
 export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
