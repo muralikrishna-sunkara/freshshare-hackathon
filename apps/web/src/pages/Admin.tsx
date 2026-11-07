@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { adminDecide, fetchAdminPending, fetchAdminReports, fetchEarlyAccessStats, resolveReport } from "../api/client";
+import { adminDecide, fetchAdminPending, fetchAdminReports, fetchEarlyAccessStats, fetchSuspended, resolveReport, unsuspendUser } from "../api/client";
 import { ErrorNote, Page } from "../components/Page";
 import { Skeleton } from "../components/States";
 import { useMe } from "../hooks/useMe";
@@ -88,6 +88,7 @@ export function AdminPage() {
         </div>
       )}
       <ReportsQueue />
+      <SuspendedList />
       <EarlyAccess />
     </Page>
   );
@@ -98,12 +99,17 @@ function ReportsQueue() {
   const [status, setStatus] = useState<"open" | "resolved">("open");
   const q = useQuery({ queryKey: ["admin-reports", status], queryFn: () => fetchAdminReports(status) });
   const resolve = useMutation({
-    mutationFn: (v: { id: string; action: "dismiss" | "remove_listing" }) => resolveReport(v.id, v.action),
+    mutationFn: (v: { id: string; action: "dismiss" | "remove_listing" | "suspend_user"; reason?: string }) => resolveReport(v.id, v.action, v.reason),
     onSuccess: () => {
+      setSuspending(null);
+      setReason("");
       qc.invalidateQueries({ queryKey: ["admin-reports"] });
+      qc.invalidateQueries({ queryKey: ["admin-suspended"] });
       qc.invalidateQueries({ queryKey: ["listings"] });
     },
   });
+  const [suspending, setSuspending] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   return (
     <section className="mt-8" aria-labelledby="reports">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -151,13 +157,61 @@ function ReportsQueue() {
                         Remove listing
                       </button>
                     )}
+                    {suspending !== r.id && (
+                      <button className="min-h-[40px] rounded-full px-4 font-semibold text-red-800 ring-1 ring-red-300" disabled={resolve.isPending} onClick={() => setSuspending(r.id)}>
+                        Suspend {r.reportedUser ? r.reportedUser.name.split(" ")[0] : "the giver"}
+                      </button>
+                    )}
                   </div>
+                )}
+                {r.status === "open" && suspending === r.id && (
+                  <form
+                    className="space-y-2 pt-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      resolve.mutate({ id: r.id, action: "suspend_user", reason });
+                    }}
+                  >
+                    <label className="block text-xs font-semibold text-stone-700">
+                      Reason shown to the person
+                      <input className="mt-1 w-full rounded-xl px-3 py-2 ring-1 ring-stone-300" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} required minLength={3} />
+                    </label>
+                    <div className="flex gap-2">
+                      <button className="min-h-[40px] rounded-full bg-red-700 px-4 font-bold text-white" disabled={resolve.isPending || reason.trim().length < 3}>Suspend account</button>
+                      <button type="button" className="min-h-[40px] rounded-full px-4 font-semibold ring-1 ring-stone-300" onClick={() => setSuspending(null)}>Keep</button>
+                    </div>
+                  </form>
                 )}
               </div>
             </li>
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** T2.5: suspended accounts, with the reason they see, and a way back. */
+function SuspendedList() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin-suspended"], queryFn: fetchSuspended });
+  const un = useMutation({ mutationFn: unsuspendUser, onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-suspended"] }) });
+  if (!q.data || q.data.length === 0) return null;
+  return (
+    <section className="mt-8" aria-labelledby="suspended">
+      <h2 id="suspended" className="mb-3 text-lg font-bold">Suspended accounts ({q.data.length})</h2>
+      <ErrorNote error={un.error} />
+      <ul className="grid gap-2 lg:grid-cols-2">
+        {q.data.map((u) => (
+          <li key={u.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3 text-sm ring-1 ring-stone-200">
+            <div className="min-w-0">
+              <Link to={`/users/${u.id}`} className="font-semibold underline">{u.name}</Link>
+              <p className="text-stone-600">{formatDay(u.suspendedAt)} · “{u.suspendedReason}”</p>
+            </div>
+            <button className="min-h-[40px] shrink-0 rounded-full px-4 font-semibold ring-1 ring-stone-300" disabled={un.isPending} onClick={() => un.mutate(u.id)}>Lift suspension</button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

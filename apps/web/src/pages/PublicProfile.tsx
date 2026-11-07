@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError, fetchPublicProfile } from "../api/client";
 import { Page } from "../components/Page";
 import { ReportButton } from "../components/ReportButton";
+import { BlockButton } from "../components/BlockButton";
 import { Stars } from "../components/Stars";
 import { VerifiedBadge } from "../components/VerifiedBadge";
 import { useMe } from "../hooks/useMe";
@@ -46,7 +47,10 @@ export function PublicProfile() {
             {me.data?.id === u.id ? (
               <Link to="/profile" className="text-sm font-semibold text-brand-dark underline">Edit your profile</Link>
             ) : (
-              <ReportButton userId={u.id} label="Report this person" />
+              <div className="flex flex-wrap items-center gap-4">
+                <ReportButton userId={u.id} label="Report this person" />
+                {me.data && <BlockButton userId={u.id} name={u.name} blocked={u.blockedByMe} />}
+              </div>
             )}
           </div>
         </section>

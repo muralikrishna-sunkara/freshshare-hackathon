@@ -153,6 +153,8 @@ model User {
   termsAcceptedAt    DateTime?
   termsVersion       String?
   emailNotifications Boolean        @default(true)
+  suspendedAt        DateTime?
+  suspendedReason    String?
   createdAt          DateTime       @default(now())
   listings           Listing[]
   claims             Claim[]
@@ -160,34 +162,38 @@ model User {
 }
 
 model Listing {
-  id           String        @id @default(cuid())
-  giverId      String
-  giver        User          @relation(fields: [giverId], references: [id])
-  title        String
-  description  String?
-  category     Category
-  origin       Origin
-  allergens    String[]
-  bestBefore   DateTime
-  photoUrl     String
-  photos       String[]
-  dietaryTags  String[]
-  weightKg     Float?
-  postcode     String?
-  areaName     String?
-  lat          Float
-  lng          Float
-  publicLat    Float
-  publicLng    Float
-  handoverSpot String?
-  fridgeId     String?
-  fridge       Fridge?       @relation(fields: [fridgeId], references: [id])
-  pickupFrom   DateTime
-  pickupUntil  DateTime
-  portions     Int           @default(1)
-  status       ListingStatus @default(available)
-  createdAt    DateTime      @default(now())
-  claims       Claim[]
+  id                String            @id @default(cuid())
+  giverId           String
+  giver             User              @relation(fields: [giverId], references: [id])
+  title             String
+  description       String?
+  category          Category
+  origin            Origin
+  allergens         String[]
+  bestBefore        DateTime
+  photoUrl          String
+  photos            String[]
+  dietaryTags       String[]
+  weightKg          Float?
+  postcode          String?
+  areaName          String?
+  lat               Float
+  lng               Float
+  publicLat         Float
+  publicLng         Float
+  handoverSpot      String?
+  fridgeId          String?
+  fridge            Fridge?           @relation(fields: [fridgeId], references: [id])
+  pickupFrom        DateTime
+  pickupUntil       DateTime
+  portions          Int               @default(1)
+  status            ListingStatus     @default(available)
+  // T2.3 waitlist: after a cancelled claim the first person in line gets an exclusive hold.
+  reservedForUserId String?
+  reservedUntil     DateTime?
+  createdAt         DateTime          @default(now())
+  claims            Claim[]
+  waitlist          ListingWaitlist[]
 
   @@index([status, lat, lng])
 }
@@ -202,6 +208,7 @@ model Claim {
   holdUntil      DateTime
   organizationId String?
   bulkClaimId    String?
+  pickupCode     String?
   createdAt      DateTime       @default(now())
   messages       Message[]
   ratings        Rating[]
@@ -399,4 +406,26 @@ model EarlyAccessSignup {
 
   @@index([role])
   @@index([source])
+}
+
+model ListingWaitlist {
+  id        String   @id @default(cuid())
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    String
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@unique([listingId, userId])
+  @@index([listingId, position])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }

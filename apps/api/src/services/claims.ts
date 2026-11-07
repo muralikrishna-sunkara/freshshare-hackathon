@@ -5,7 +5,10 @@ import { prisma } from "../lib/prisma.js";
 import { giverView, publicListing } from "./listings.js";
 import { notify } from "./notify.js";
 import { recomputeBulk } from "./orgs.js";
+import { randomInt } from "node:crypto";
 import { HOMEMADE_MAX_HOURS } from "./rules.js";
+import { isBlockedBetween } from "./blocks.js";
+import { heldForOther, offerToNext, waitlistHousekeeping } from "./waitlist.js";
 
 export const HOLD_MINUTES = 30;
 export const ACTIVE = ["pending", "confirmed"] as const;
@@ -35,6 +38,8 @@ export function claimView(c: ClaimFull, role: "giver" | "receiver") {
       ...(revealed ? { lat: c.listing.lat, lng: c.listing.lng, handoverSpot: c.listing.handoverSpot } : {}),
     },
     receiver: giverView(c.receiver),
+    // T2.6: the receiver shows this (as a QR code or 6 digits) and the giver enters or scans it to complete the pickup.
+    ...(role === "receiver" && c.status === "confirmed" && c.pickupCode ? { pickupCode: c.pickupCode } : {}),
     myRating: c.ratings.find((r) => r.fromUserId === (role === "giver" ? c.listing.giverId : c.receiverId))?.stars ?? null,
   };
 }
@@ -59,10 +64,20 @@ async function reserveTx(listingId: string, receiverId: string) {
     const l = await tx.listing.findUnique({ where: { id: listingId } });
     if (!l || l.status === "removed") throw new HttpError(404, "not_found", "Listing not found");
     if (l.giverId === receiverId) throw new HttpError(400, "own_listing", "You can't reserve your own food");
-    // Atomic guard: only one request can flip available -> reserved.
+    if (await isBlockedBetween(l.giverId, receiverId)) throw new HttpError(403, "blocked", "You can't reserve food from this person");
+    const now = new Date();
+    if (l.status === "available" && heldForOther(l, receiverId, now)) {
+      throw new HttpError(409, "held_for_waitlist", "This food is being offered to the next person on the waitlist. Join the waitlist to be next.");
+    }
+    // Atomic guard: only one request can flip available -> reserved (and only the waitlist holder while a hold runs).
     const flipped = await tx.listing.updateMany({
-      where: { id: listingId, status: "available", bestBefore: { gt: new Date() } },
-      data: { status: "reserved" },
+      where: {
+        id: listingId,
+        status: "available",
+        bestBefore: { gt: now },
+        OR: [{ reservedForUserId: null }, { reservedForUserId: receiverId }, { reservedUntil: { lt: now } }],
+      },
+      data: { status: "reserved", reservedForUserId: null, reservedUntil: null },
     });
     if (flipped.count === 0) throw new HttpError(409, "not_available", "Someone else was quicker. This food has just been reserved.");
     return tx.claim.create({
@@ -78,7 +93,7 @@ export async function transition(id: string, viewerId: string, action: "confirm"
     if (c.role !== "giver") throw new HttpError(403, "forbidden", "Only the giver can confirm");
     if (c.status !== "pending") throw new HttpError(409, "bad_state", `This pickup is already ${c.status}`);
     if (c.holdUntil < new Date()) throw new HttpError(409, "hold_lapsed", "The 30-minute hold has run out");
-    await prisma.claim.update({ where: { id }, data: { status: "confirmed" } });
+    await prisma.claim.update({ where: { id }, data: { status: "confirmed", pickupCode: newPickupCode() } });
   } else if (action === "decline") {
     if (c.role !== "giver") throw new HttpError(403, "forbidden", "Only the giver can decline");
     if (c.status !== "pending") throw new HttpError(409, "bad_state", `This pickup is already ${c.status}`);
@@ -100,6 +115,7 @@ export async function transition(id: string, viewerId: string, action: "confirm"
     ]);
   }
   if (c.bulkClaimId) await recomputeBulk(c.bulkClaimId);
+  if (action === "decline" || action === "cancel") await offerToNext(c.listingId);
   await notifyTransition(c, action);
   return loadClaim(id, viewerId);
 }
@@ -143,6 +159,7 @@ export async function housekeeping(now = new Date()) {
       prisma.listing.updateMany({ where: { id: c.listingId, status: "reserved" }, data: { status: "available" } }),
     ]);
     if (c.bulkClaimId) await recomputeBulk(c.bulkClaimId);
+    await offerToNext(c.listingId, now);
     await notify(c.receiverId, {
       type: "claim_cancelled",
       title: "Your reservation ran out",
@@ -179,8 +196,21 @@ export async function housekeeping(now = new Date()) {
     },
     data: { status: "expired" },
   });
-  if (lapsed.length || expired.count) logger.info({ lapsed: lapsed.length, expired: expired.count }, "housekeeping");
-  return { lapsed: lapsed.length, expired: expired.count };
+  const passedOn = await waitlistHousekeeping(now);
+  if (lapsed.length || expired.count || passedOn) logger.info({ lapsed: lapsed.length, expired: expired.count, passedOn }, "housekeeping");
+  return { lapsed: lapsed.length, expired: expired.count, passedOn };
+}
+
+/** 6 random digits for the handover check (T2.6). */
+export const newPickupCode = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
+
+/** T2.6: the giver types (or scans) the receiver's code; a match marks the pickup collected. */
+export async function verifyPickupCode(id: string, viewerId: string, code: string) {
+  const c = await loadClaim(id, viewerId);
+  if (c.role !== "giver") throw new HttpError(403, "forbidden", "Only the giver checks the pickup code");
+  if (c.status !== "confirmed") throw new HttpError(409, "bad_state", c.status === "collected" ? "This pickup is already completed" : "Confirm the pickup first");
+  if (!c.pickupCode || c.pickupCode !== code) throw new HttpError(400, "wrong_code", "That code doesn't match. Ask to see the code on their pickup page.");
+  return transition(id, viewerId, "collected");
 }
 
 export async function myClaims(userId: string) {

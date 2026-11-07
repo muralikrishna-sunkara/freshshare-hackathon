@@ -132,7 +132,14 @@ export type ClaimStatus = "pending" | "confirmed" | "collected" | "cancelled" | 
 export interface ListingDetail extends Listing {
   isMine: boolean;
   myClaim: { id: string; status: ClaimStatus } | null;
+  heldUntil: string | null;
+  heldForMe: boolean;
+  waitlist: { count: number; myPosition: number | null };
 }
+
+export type WaitlistStatus = ListingDetail["waitlist"];
+export const joinWaitlist = (id: string) => api<{ waitlist: WaitlistStatus }>(`/listings/${id}/waitlist`, { method: "POST" }).then((r) => r.waitlist);
+export const leaveWaitlist = (id: string) => api<{ waitlist: WaitlistStatus }>(`/listings/${id}/waitlist`, { method: "DELETE" }).then((r) => r.waitlist);
 
 export const fetchListing = (id: string) => api<{ listing: ListingDetail }>(`/listings/${id}`).then((r) => r.listing);
 
@@ -145,7 +152,11 @@ export interface Claim {
   listing: Listing;
   receiver: Giver;
   myRating: number | null;
+  /** Receiver only, once confirmed: show as QR code or digits; the giver enters it to complete the pickup. */
+  pickupCode?: string;
 }
+
+export const verifyPickupCode = (id: string, code: string) => api<{ claim: Claim }>(`/claims/${id}/verify`, json({ code })).then((r) => r.claim);
 
 export const reserveListing = (id: string) => api<{ claim: Claim }>(`/listings/${id}/claims`, { method: "POST" }).then((r) => r.claim);
 export const fetchClaim = (id: string) => api<{ claim: Claim }>(`/claims/${id}`).then((r) => r.claim);
@@ -196,9 +207,14 @@ export interface PublicProfile {
   ratingAvg: number;
   ratingCount: number;
   memberSince: string;
+  blockedByMe: boolean;
   stats: { shared: number; given: number; received: number };
   reviews: { id: string; stars: number; note: string | null; createdAt: string; from: { id: string; name: string } }[];
 }
+export const blockUser = (id: string) => api<{ blocked: true; cancelledPickups: number }>(`/users/${id}/block`, { method: "POST" });
+export const unblockUser = (id: string) => api<{ blocked: false }>(`/users/${id}/block`, { method: "DELETE" });
+export const fetchMyBlocks = () => api<{ blocked: { id: string; name: string }[] }>("/users/blocks/mine").then((r) => r.blocked);
+
 export const fetchPublicProfile = (id: string) => api<{ user: PublicProfile }>(`/users/${id}`).then((r) => r.user);
 
 export type EarlyAccessRole = "giver" | "receiver" | "business" | "fridge_host" | "organization";
@@ -327,8 +343,11 @@ export interface AdminReport {
   reportedUser: { id: string; name: string } | null;
 }
 export const fetchAdminReports = (status: "open" | "resolved" = "open") => api<{ reports: AdminReport[] }>(`/admin/reports?status=${status}`);
-export const resolveReport = (id: string, action: "dismiss" | "remove_listing") =>
-  api<{ ok: true }>(`/admin/reports/${id}/resolve`, json({ action }));
+export const resolveReport = (id: string, action: "dismiss" | "remove_listing" | "suspend_user", reason?: string) =>
+  api<{ ok: true }>(`/admin/reports/${id}/resolve`, json({ action, reason }));
+export interface SuspendedUser { id: string; name: string; suspendedAt: string; suspendedReason: string | null }
+export const fetchSuspended = () => api<{ users: SuspendedUser[] }>("/admin/users/suspended").then((r) => r.users);
+export const unsuspendUser = (id: string) => api<{ ok: true }>(`/admin/users/${id}/unsuspend`, { method: "POST" });
 
 export interface EarlyAccessStats {
   total: number;

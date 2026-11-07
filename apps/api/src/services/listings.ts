@@ -1,3 +1,4 @@
+import { blockedIds } from "./blocks.js";
 import { Prisma, type Category } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { areaLabel } from "../lib/geocode.js";
@@ -46,7 +47,8 @@ export function publicListing(
   };
 }
 
-export async function findNearby(lat: number, lng: number, radius: number, category?: Category, diet?: string) {
+export async function findNearby(lat: number, lng: number, radius: number, category?: Category, diet?: string, viewerId?: string) {
+  const hidden = [...(await blockedIds(viewerId))];
   const latD = radius / 111320;
   const lngD = radius / (111320 * Math.cos((lat * Math.PI) / 180));
   const rows = await prisma.$queryRaw<{ id: string; distance_m: number }[]>`
@@ -63,6 +65,11 @@ export async function findNearby(lat: number, lng: number, radius: number, categ
         AND lng BETWEEN ${lng - lngD} AND ${lng + lngD}
         ${category ? Prisma.sql`AND category = ${category}::"Category"` : Prisma.empty}
         ${diet ? Prisma.sql`AND ${diet} = ANY("dietaryTags")` : Prisma.empty}
+        -- held for the next person on a waitlist (T2.3): only that person sees it
+        AND ("reservedForUserId" IS NULL OR "reservedUntil" < now() ${viewerId ? Prisma.sql`OR "reservedForUserId" = ${viewerId}` : Prisma.empty})
+        -- suspended givers and blocked people (T2.5)
+        AND "giverId" NOT IN (SELECT id FROM "User" WHERE "suspendedAt" IS NOT NULL)
+        ${hidden.length ? Prisma.sql`AND "giverId" NOT IN (${Prisma.join(hidden)})` : Prisma.empty}
     ) t
     WHERE distance_m <= ${radius}
     ORDER BY distance_m

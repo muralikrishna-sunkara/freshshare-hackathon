@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { z } from "zod";
-import { COOKIE, cookieOptions, requireAuth, signToken, userId } from "../lib/auth.js";
+import { COOKIE, cookieOptions, requireAuth, signToken, suspendedError, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { authLimiter } from "../lib/rateLimit.js";
@@ -66,6 +66,7 @@ auth.post(
     if (!user || !(await bcrypt.compare(b.password, user.passwordHash))) {
       throw new HttpError(401, "invalid_credentials", "Email or password is wrong");
     }
+    if (user.suspendedAt) throw suspendedError(user.suspendedReason);
     res.cookie(COOKIE, signToken(user.id), cookieOptions(req));
     res.json({ user: await meView(user) });
   }),

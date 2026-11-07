@@ -26,6 +26,7 @@ export default defineConfig({
     // Notifications bell, live count, page.
     { name: "notifications", testMatch: "notifications.spec.ts", dependencies: ["admin"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "impact", testMatch: "impact.spec.ts", dependencies: ["desktop"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    { name: "trust", testMatch: "trust.spec.ts", dependencies: ["desktop"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     // Read-only browse check on a phone-sized browser; runs after the demo path.
     { name: "mobile", testMatch: "mobile-browse.spec.ts", dependencies: ["desktop"], use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],

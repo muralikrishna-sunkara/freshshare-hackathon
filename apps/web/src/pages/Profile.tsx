@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { fetchMyClaims, logout, updateProfile, verifyEmail, verifyPhone, type Me } from "../api/client";
+import { fetchMyBlocks, fetchMyClaims, logout, unblockUser, updateProfile, verifyEmail, verifyPhone, type Me } from "../api/client";
 import { UserImpactPanel } from "../components/ImpactPanel";
 import { LocationPicker } from "../components/LocationPicker";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
@@ -46,6 +46,7 @@ export function Profile() {
 
         <EditProfile key={u.id} user={u} />
         <EmailSetting user={u} />
+        <BlockedPeople />
 
         <section className="grid grid-cols-3 gap-2 text-center">
           {[
@@ -183,6 +184,28 @@ function EditProfile({ user }: { user: Me }) {
         </button>
       </div>
     </form>
+  );
+}
+
+/** T2.5: people you blocked, to unblock them. Hidden when there are none. */
+function BlockedPeople() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["blocks"], queryFn: fetchMyBlocks });
+  const un = useMutation({ mutationFn: unblockUser, onSuccess: () => { qc.invalidateQueries({ queryKey: ["blocks"] }); qc.invalidateQueries({ queryKey: ["listings"] }); } });
+  if (!q.data?.length) return null;
+  return (
+    <section className="rounded-2xl bg-white p-4 text-sm ring-1 ring-stone-200" aria-labelledby="blocked-h">
+      <h2 id="blocked-h" className="font-semibold">Blocked people</h2>
+      <ErrorNote error={un.error} />
+      <ul className="mt-2 divide-y divide-stone-100">
+        {q.data.map((p) => (
+          <li key={p.id} className="flex items-center justify-between py-2">
+            <Link to={`/users/${p.id}`} className="font-semibold hover:underline">{p.name}</Link>
+            <button type="button" className="font-semibold text-brand-dark underline" disabled={un.isPending} onClick={() => un.mutate(p.id)}>Unblock</button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
