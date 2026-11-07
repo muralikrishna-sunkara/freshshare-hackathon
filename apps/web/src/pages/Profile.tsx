@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchMyBlocks, fetchMyClaims, logout, unblockUser, updateProfile, verifyEmail, verifyPhone, type Me } from "../api/client";
 import { UserImpactPanel } from "../components/ImpactPanel";
+import { AlertSettings } from "../components/AlertSettings";
 import { LocationPicker } from "../components/LocationPicker";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { Stars } from "../components/Stars";
@@ -46,6 +47,10 @@ export function Profile() {
 
         <EditProfile key={u.id} user={u} />
         <EmailSetting user={u} />
+        <AlertSettings />
+        <Link to="/me/recurring" className="flex items-center justify-between rounded-2xl bg-white p-4 text-sm font-semibold ring-1 ring-stone-200 hover:bg-stone-50">
+          <span>🔁 Recurring listings</span><span aria-hidden>›</span>
+        </Link>
         <BlockedPeople />
 
         <section className="grid grid-cols-3 gap-2 text-center">

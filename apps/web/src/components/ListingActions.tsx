@@ -36,6 +36,11 @@ export function ListingActions({ listing }: { listing: Listing }) {
         <Link to={`/share?from=${listing.id}`} className="block rounded-xl p-3 text-center text-sm font-semibold text-brand-dark ring-1 ring-stone-300">
           Post again
         </Link>
+        {listing.origin !== "homemade" && (
+          <Link to={`/me/recurring?from=${listing.id}`} className="block rounded-xl p-3 text-center text-sm font-semibold text-brand-dark ring-1 ring-stone-300">
+            🔁 Repeat on a schedule
+          </Link>
+        )}
       </div>
     );
   }

@@ -408,3 +408,31 @@ export interface OrgImpact {
 }
 export const fetchUserImpact = (id: string) => api<UserImpact>(`/impact/users/${id}`);
 export const fetchOrgImpact = (id: string) => api<OrgImpact>(`/impact/organizations/${id}`);
+
+// T2.2 nearby alerts
+export interface AlertSettings { enabled: boolean; lat: number | null; lng: number | null; radiusM: number; categories: Category[] }
+export const fetchAlerts = () => api<{ alert: AlertSettings }>("/alerts").then((r) => r.alert);
+export const saveAlerts = (b: { enabled: boolean; radiusM?: number; categories?: Category[] }) =>
+  api<{ alert: AlertSettings }>("/alerts", { ...json(b), method: "PUT" }).then((r) => r.alert);
+
+// T2.4 recurring listings
+export interface Schedule {
+  id: string;
+  title: string;
+  category: Category;
+  portions: number;
+  photoUrl: string | null;
+  daysOfWeek: number[];
+  time: string;
+  pickupHours: number;
+  bestBeforeDays: number;
+  active: boolean;
+  lastPostedOn: string | null;
+  nextRun: string | null;
+}
+export const fetchSchedules = () => api<{ schedules: Schedule[] }>("/schedules").then((r) => r.schedules);
+export const createSchedule = (b: { fromListingId: string; daysOfWeek: number[]; time: string; pickupHours: number }) =>
+  api<{ schedule: Schedule }>("/schedules", json(b)).then((r) => r.schedule);
+export const updateSchedule = (id: string, b: Partial<Pick<Schedule, "active" | "daysOfWeek" | "time" | "pickupHours" | "portions">>) =>
+  api<{ schedule: Schedule }>(`/schedules/${id}`, { ...json(b), method: "PATCH" }).then((r) => r.schedule);
+export const deleteSchedule = (id: string) => fetch(`/api/schedules/${id}`, { method: "DELETE", credentials: "include" });

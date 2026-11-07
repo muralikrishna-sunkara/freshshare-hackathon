@@ -15,6 +15,7 @@ import { PublicProfile } from "./pages/PublicProfile";
 import { ShareFood } from "./pages/ShareFood";
 import { SignIn } from "./pages/SignIn";
 import { SignUp } from "./pages/SignUp";
+import { RecurringPage } from "./pages/Recurring";
 
 export function App() {
   return (
@@ -53,6 +54,7 @@ export function App() {
         <Route path="/pickups" element={<RequireAuth><Pickups /></RequireAuth>} />
         <Route path="/pickups/:id" element={<RequireAuth><ClaimPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path="/me/recurring" element={<RequireAuth><RecurringPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
