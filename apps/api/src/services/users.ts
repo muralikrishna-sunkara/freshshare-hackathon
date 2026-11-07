@@ -15,6 +15,7 @@ export async function meView(u: User) {
     homeLng: u.homeLng,
     bio: u.bio,
     role: u.role,
+    emailNotifications: u.emailNotifications,
     termsVersion: u.termsVersion,
     emailVerified: u.emailVerified,
     phoneVerified: u.phoneVerified,

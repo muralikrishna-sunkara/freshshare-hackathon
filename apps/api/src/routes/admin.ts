@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { notify } from "../services/notify.js";
 import { recomputeBulk } from "../services/orgs.js";
 
 export const admin = Router();
@@ -41,6 +42,10 @@ admin.post(
     const status = req.params.decision === "approve" ? "active" : "rejected";
     const r = await prisma.fridge.updateMany({ where: { id, status: "pending" }, data: { status, reviewedById: userId(req) } });
     if (r.count === 0) throw new HttpError(404, "not_found", "No pending fridge with that id");
+    const f = await prisma.fridge.findUniqueOrThrow({ where: { id } });
+    if (status === "active" && f.createdById) {
+      await notify(f.createdById, { type: "fridge_approved", title: `${f.name} is on the map`, body: "Thanks for suggesting it. Neighbours can now find it and check in.", link: `/fridges/${f.id}` });
+    }
     res.json({ ok: true, status });
   }),
 );
@@ -55,6 +60,12 @@ admin.post(
       data: approve ? { status: "approved", verifiedById: userId(req), verifiedAt: new Date() } : { status: "rejected", verifiedById: userId(req) },
     });
     if (r.count === 0) throw new HttpError(404, "not_found", "No pending organization with that id");
+    if (approve) {
+      const o = await prisma.organization.findUniqueOrThrow({ where: { id }, include: { members: { where: { role: "admin" } } } });
+      for (const m of o.members) {
+        await notify(m.userId, { type: "org_approved", title: `${o.name} is verified`, body: "Your organization is now listed and can request food in bulk.", link: `/organizations/${o.id}/dashboard` });
+      }
+    }
     res.json({ ok: true, status: approve ? "approved" : "rejected" });
   }),
 );

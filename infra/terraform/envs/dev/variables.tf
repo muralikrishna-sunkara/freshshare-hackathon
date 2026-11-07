@@ -125,3 +125,11 @@ variable "protect_data" {
   type        = bool
   default     = false
 }
+
+# ---------- Email (SES) ----------
+
+variable "ses_sandbox_recipients" {
+  description = "While the SES account is in the sandbox, it can only email verified addresses. List test inboxes here; AWS sends each a verification link."
+  type        = list(string)
+  default     = []
+}

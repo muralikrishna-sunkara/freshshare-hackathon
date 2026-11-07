@@ -10,6 +10,7 @@ import { logger } from "./lib/logger.js";
 import { auth, me } from "./routes/auth.js";
 import { claims } from "./routes/claims.js";
 import { earlyAccess } from "./routes/earlyAccess.js";
+import { notifications } from "./routes/notifications.js";
 import { fridges } from "./routes/fridges.js";
 import { health } from "./routes/health.js";
 import { impact } from "./routes/impact.js";
@@ -46,6 +47,7 @@ export function createApp() {
   api.use("/organizations", organizations);
   api.use("/bulk-claims", bulkClaims);
   api.use("/admin", admin);
+  api.use("/notifications", notifications);
   api.use("/early-access", earlyAccess);
   api.use(notFound);
   app.use("/api", api);

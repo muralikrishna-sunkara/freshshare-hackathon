@@ -49,6 +49,7 @@ export function Profile() {
         </section>
 
         <EditProfile key={u.id} user={u} />
+        <EmailSetting user={u} />
 
         <section className="grid grid-cols-3 gap-2 text-center">
           {[
@@ -191,5 +192,28 @@ function EditProfile({ user }: { user: Me }) {
         </button>
       </div>
     </form>
+  );
+}
+
+function EmailSetting({ user }: { user: Me }) {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: (on: boolean) => updateProfile({ emailNotifications: on }),
+    onSuccess: (u) => qc.setQueryData(["me"], u),
+  });
+  const on = m.isPending ? !!m.variables : user.emailNotifications;
+  return (
+    <section className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+      <div className="min-w-0 text-sm">
+        <p className="font-semibold">Email notifications</p>
+        <p className="text-stone-600">When someone reserves your food, confirms your pickup or sends you a message. You always see them under 🔔.</p>
+        <ErrorNote error={m.error} />
+      </div>
+      <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+        <input type="checkbox" className="peer sr-only" checked={on} disabled={m.isPending} onChange={(e) => m.mutate(e.target.checked)} aria-label="Email notifications" />
+        <span className="h-7 w-12 rounded-full bg-stone-300 transition peer-checked:bg-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand" />
+        <span className="absolute left-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+      </label>
+    </section>
   );
 }

@@ -21,11 +21,18 @@ services:
       STORAGE_DRIVER: local
       PUBLIC_IMAGE_BASE_URL: /uploads
       APP_URL: http://localhost
+      # Notification emails go to Mailpit: open http://localhost:8025 to read them
+      EMAIL_TRANSPORT: smtp
+      MAILPIT_URL: http://mailpit:8025
     # Apply migrations on start locally (on ECS they run as a one-off task)
     command: ["sh", "-c", "npx prisma migrate deploy && node dist/src/index.js"]
     depends_on:
       db: { condition: service_healthy }
+      mailpit: { condition: service_started }
     volumes: [uploads:/app/uploads]
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["8025:8025", "1025:1025"]
   web:
     build: { context: .., dockerfile: apps/web/Dockerfile }
     environment:

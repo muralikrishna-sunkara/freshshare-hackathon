@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth, userId } from "../lib/auth.js";
 import { ah, HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { notify } from "../services/notify.js";
 import { claimView, loadClaim, myClaims, transition } from "../services/claims.js";
 import { rateClaim } from "../services/ratings.js";
 
@@ -80,6 +81,15 @@ claims.post(
     const c = await loadClaim(id, me);
     if (c.status === "cancelled" || c.status === "lapsed" || c.status === "declined") throw new HttpError(409, "closed", "This pickup is closed");
     const message = await prisma.message.create({ data: { claimId: id, senderId: me, body } });
+    const sender = c.role === "giver" ? c.listing.giver : c.receiver;
+    await notify(c.role === "giver" ? c.receiverId : c.listing.giverId, {
+      type: "new_message",
+      title: `New message from ${sender.name.split(" ")[0]}`,
+      body: `About ${c.listing.title}: "${body.length > 140 ? `${body.slice(0, 137)}...` : body}"`,
+      link: `/pickups/${id}`,
+      listingId: c.listingId,
+      claimId: id,
+    });
     res.status(201).json({ message });
   }),
 );

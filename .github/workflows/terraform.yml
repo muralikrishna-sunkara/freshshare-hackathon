@@ -129,6 +129,8 @@ jobs:
           TF_VAR_domain_name: ${{ vars.APP_DOMAIN || '' }}
           TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID || '' }}
           TF_VAR_certificate_arn: ${{ vars.ACM_CERTIFICATE_ARN || '' }}
+      TF_VAR_ses_sandbox_recipients: ${{ vars.SES_SANDBOX_RECIPIENTS || '[]' }}
+          TF_VAR_ses_sandbox_recipients: ${{ vars.SES_SANDBOX_RECIPIENTS || '[]' }}
         run: |
           set +e
           terraform plan -lock=false -no-color > plan.txt 2>&1
@@ -177,6 +179,7 @@ jobs:
       TF_VAR_domain_name: ${{ vars.APP_DOMAIN || '' }}
       TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID || '' }}
       TF_VAR_certificate_arn: ${{ vars.ACM_CERTIFICATE_ARN || '' }}
+      TF_VAR_ses_sandbox_recipients: ${{ vars.SES_SANDBOX_RECIPIENTS || '[]' }}
     steps:
       - name: Check AWS configuration
         run: |

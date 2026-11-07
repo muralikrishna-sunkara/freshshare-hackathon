@@ -23,6 +23,8 @@ export default defineConfig({
     { name: "orgs", testMatch: "orgs-fridges.spec.ts", dependencies: ["listings"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     // Admin reports queue, early access, credits, empty-state actions.
     { name: "admin", testMatch: "admin.spec.ts", dependencies: ["orgs"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // Notifications bell, live count, page.
+    { name: "notifications", testMatch: "notifications.spec.ts", dependencies: ["admin"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     // Read-only browse check on a phone-sized browser; runs after the demo path.
     { name: "mobile", testMatch: "mobile-browse.spec.ts", dependencies: ["desktop"], use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],

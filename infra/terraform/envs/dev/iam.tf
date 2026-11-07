@@ -87,6 +87,24 @@ data "aws_iam_policy_document" "api_task" {
     ]
     resources = ["*"]
   }
+
+  # Notification emails, only from our own domain identity and only as notifications@<domain>
+  dynamic "statement" {
+    for_each = local.email_enabled ? [1] : []
+    content {
+      sid     = "SendNotificationEmail"
+      actions = ["ses:SendEmail", "ses:SendRawEmail"]
+      resources = concat(
+        [aws_sesv2_email_identity.domain[0].arn, aws_sesv2_configuration_set.app[0].arn],
+        [for r in aws_sesv2_email_identity.sandbox_recipient : r.arn],
+      )
+      condition {
+        test     = "StringEquals"
+        variable = "ses:FromAddress"
+        values   = ["notifications@${var.domain_name}"]
+      }
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "api_task" {

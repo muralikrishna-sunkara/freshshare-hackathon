@@ -3,6 +3,7 @@ import { HttpError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import { giverView, publicListing } from "./listings.js";
+import { notify } from "./notify.js";
 import { recomputeBulk } from "./orgs.js";
 import { HOMEMADE_MAX_HOURS } from "./rules.js";
 
@@ -39,6 +40,21 @@ export function claimView(c: ClaimFull, role: "giver" | "receiver") {
 }
 
 export async function reserve(listingId: string, receiverId: string) {
+  const claim = await reserveTx(listingId, receiverId);
+  await notify(claim.listing.giverId, {
+    type: "claim_received",
+    title: `${firstName(claim.receiver.name)} would like your ${claim.listing.title}`,
+    body: `Confirm within ${HOLD_MINUTES} minutes or the hold runs out. Your exact address is shared only after you confirm.`,
+    link: `/pickups/${claim.id}`,
+    listingId,
+    claimId: claim.id,
+  });
+  return claim;
+}
+
+const firstName = (name: string) => name.split(" ")[0];
+
+async function reserveTx(listingId: string, receiverId: string) {
   return prisma.$transaction(async (tx) => {
     const l = await tx.listing.findUnique({ where: { id: listingId } });
     if (!l || l.status === "removed") throw new HttpError(404, "not_found", "Listing not found");
@@ -84,14 +100,42 @@ export async function transition(id: string, viewerId: string, action: "confirm"
     ]);
   }
   if (c.bulkClaimId) await recomputeBulk(c.bulkClaimId);
+  await notifyTransition(c, action);
   return loadClaim(id, viewerId);
 }
+
+async function notifyTransition(c: ClaimFull & { role: "giver" | "receiver" }, action: "confirm" | "collected" | "cancel" | "decline") {
+  const giver = c.listing.giver;
+  const base = { link: `/pickups/${c.id}`, listingId: c.listingId, claimId: c.id };
+  if (action === "confirm") {
+    await notify(c.receiverId, {
+      ...base,
+      type: "claim_confirmed",
+      title: `${firstName(giver.name)} confirmed your pickup`,
+      body: `${c.listing.title}: the address and pickup details are now on the pickup page. Pickup until ${c.listing.pickupUntil.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" })}.`,
+    });
+  } else if (action === "decline") {
+    await notify(c.receiverId, { ...base, type: "claim_cancelled", title: `${c.listing.title} isn't available for you`, body: `${firstName(giver.name)} couldn't hand it over this time. Have a look for more food nearby.`, link: "/map" });
+  } else if (action === "cancel") {
+    const toGiver = c.role === "receiver";
+    await notify(toGiver ? giver.id : c.receiverId, {
+      ...base,
+      type: "claim_cancelled",
+      title: toGiver ? `${firstName(c.receiver.name)} cancelled the pickup` : `${firstName(giver.name)} cancelled your pickup`,
+      body: toGiver ? `${c.listing.title} is back on the map for others.` : `${c.listing.title} is no longer reserved for you.`,
+      link: toGiver ? `/listings/${c.listingId}` : "/map",
+    });
+  }
+}
+
+/** Pickup windows ending within this time trigger one listing_expiring_soon reminder to the giver. */
+export const EXPIRING_SOON_MS = 60 * 60_000;
 
 /** Every minute: lapse expired holds (freeing the listing) and expire old listings. */
 export async function housekeeping(now = new Date()) {
   const lapsed = await prisma.claim.findMany({
     where: { status: "pending", holdUntil: { lt: now } },
-    select: { id: true, listingId: true, bulkClaimId: true },
+    select: { id: true, listingId: true, bulkClaimId: true, receiverId: true },
   });
   for (const c of lapsed) {
     await prisma.$transaction([
@@ -99,6 +143,33 @@ export async function housekeeping(now = new Date()) {
       prisma.listing.updateMany({ where: { id: c.listingId, status: "reserved" }, data: { status: "available" } }),
     ]);
     if (c.bulkClaimId) await recomputeBulk(c.bulkClaimId);
+    await notify(c.receiverId, {
+      type: "claim_cancelled",
+      title: "Your reservation ran out",
+      body: `The giver didn't confirm within ${HOLD_MINUTES} minutes, so the food is back on the map.`,
+      link: "/map",
+      listingId: c.listingId,
+      claimId: c.id,
+    });
+  }
+  // One reminder per listing when its pickup window is about to end with nobody coming.
+  const ending = await prisma.listing.findMany({
+    where: { status: "available", pickupUntil: { gt: now, lte: new Date(now.getTime() + EXPIRING_SOON_MS) } },
+    select: { id: true, giverId: true, title: true },
+  });
+  if (ending.length) {
+    const already = new Set(
+      (await prisma.notification.findMany({ where: { type: "listing_expiring_soon", listingId: { in: ending.map((l) => l.id) } }, select: { listingId: true } })).map((n) => n.listingId),
+    );
+    for (const l of ending.filter((x) => !already.has(x.id))) {
+      await notify(l.giverId, {
+        type: "listing_expiring_soon",
+        title: `${l.title}: pickup ends within the hour`,
+        body: "Nobody has reserved it yet. Extend the pickup time by posting it again, or drop it at a community fridge.",
+        link: `/listings/${l.id}`,
+        listingId: l.id,
+      });
+    }
   }
   const homemadeCutoff = new Date(now.getTime() - HOMEMADE_MAX_HOURS * 3600_000);
   const expired = await prisma.listing.updateMany({

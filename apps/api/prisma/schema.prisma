@@ -49,6 +49,18 @@ enum ReportReason {
   other
 }
 
+enum NotificationType {
+  claim_received
+  claim_confirmed
+  claim_cancelled
+  new_message
+  listing_expiring_soon
+  new_listing_nearby
+  waitlist_offer
+  fridge_approved
+  org_approved
+}
+
 enum ReportStatus {
   open
   resolved
@@ -126,23 +138,25 @@ enum FridgeState {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  passwordHash    String
-  name            String
-  homeLat         Float
-  homeLng         Float
-  emailVerified   Boolean   @default(false)
-  phoneVerified   Boolean   @default(false)
-  ratingAvg       Float     @default(0)
-  ratingCount     Int       @default(0)
-  role            UserRole  @default(user)
-  bio             String?
-  termsAcceptedAt DateTime?
-  termsVersion    String?
-  createdAt       DateTime  @default(now())
-  listings        Listing[]
-  claims          Claim[]
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  passwordHash       String
+  name               String
+  homeLat            Float
+  homeLng            Float
+  emailVerified      Boolean        @default(false)
+  phoneVerified      Boolean        @default(false)
+  ratingAvg          Float          @default(0)
+  ratingCount        Int            @default(0)
+  role               UserRole       @default(user)
+  bio                String?
+  termsAcceptedAt    DateTime?
+  termsVersion       String?
+  emailNotifications Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  listings           Listing[]
+  claims             Claim[]
+  notifications      Notification[]
 }
 
 model Listing {
@@ -336,12 +350,21 @@ model AlertSubscription {
 }
 
 model Notification {
-  id        String    @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
   listingId String?
-  text      String
+  claimId   String?
   readAt    DateTime?
-  createdAt DateTime  @default(now())
+  emailedAt DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
 }
 
 model Setting {

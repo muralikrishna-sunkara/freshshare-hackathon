@@ -74,6 +74,8 @@ module "api" {
     PUBLIC_IMAGE_BASE_URL = coalesce(module.storage.images_base_url, "")
     SNS_NOTIFICATIONS_ARN = module.notifications.app_topic_arn
     STORAGE_DRIVER        = "s3"
+    EMAIL_TRANSPORT       = local.email_enabled ? "ses" : "log"
+    EMAIL_FROM            = local.email_from
   }
 
   secrets = {
