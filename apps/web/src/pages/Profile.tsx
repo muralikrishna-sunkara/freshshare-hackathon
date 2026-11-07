@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { fetchImpact, fetchMyClaims, logout, verifyEmail, verifyPhone } from "../api/client";
+import { fetchImpact, fetchMyClaims, logout, updateProfile, verifyEmail, verifyPhone, type Me } from "../api/client";
+import { LocationPicker } from "../components/LocationPicker";
 import { ErrorNote, inputCls, labelCls, Page, primaryBtn } from "../components/Page";
 import { Stars } from "../components/Stars";
 import { VerifiedBadge } from "../components/VerifiedBadge";
@@ -43,8 +44,11 @@ export function Profile() {
               {u.verified && <VerifiedBadge />}
               <Stars avg={u.ratingAvg} count={u.ratingCount} />
             </div>
+            <Link to={`/users/${u.id}`} className="text-sm font-semibold text-brand-dark underline">See your public profile</Link>
           </div>
         </section>
+
+        <EditProfile key={u.id} user={u} />
 
         <section className="grid grid-cols-3 gap-2 text-center">
           {[
@@ -130,5 +134,62 @@ export function Profile() {
         </button>
       </div>
     </Page>
+  );
+}
+
+function EditProfile({ user }: { user: Me }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(user.name);
+  const [bio, setBio] = useState(user.bio ?? "");
+  const [home, setHome] = useState({ lat: user.homeLat, lng: user.homeLng });
+  const m = useMutation({
+    mutationFn: () => updateProfile({ name, bio: bio.trim() || null, homeLat: home.lat, homeLng: home.lng }),
+    onSuccess: (u) => {
+      qc.setQueryData(["me"], u);
+      qc.invalidateQueries({ queryKey: ["user", u.id] });
+    },
+  });
+  if (!open)
+    return (
+      <section className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+        <p className="min-w-0 text-sm text-stone-700">{user.bio ? user.bio : <span className="text-stone-500">Add a short bio so neighbours know who you are.</span>}</p>
+        <button className="shrink-0 min-h-[40px] rounded-full px-4 text-sm font-semibold ring-1 ring-stone-300" onClick={() => setOpen(true)}>
+          Edit profile
+        </button>
+      </section>
+    );
+  return (
+    <form
+      className="space-y-4 rounded-2xl bg-white p-4 ring-1 ring-stone-200"
+      onSubmit={(e) => {
+        e.preventDefault();
+        m.mutate();
+      }}
+    >
+      <h2 className="font-bold">Edit profile</h2>
+      <div>
+        <label className={labelCls} htmlFor="p-name">Name</label>
+        <input id="p-name" required minLength={2} maxLength={60} className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <div>
+        <label className={labelCls} htmlFor="p-bio">Bio</label>
+        <textarea id="p-bio" maxLength={300} rows={3} className={inputCls} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="e.g. Family of four, we often have too much fruit." />
+        <p className="mt-1 text-xs text-stone-500">{300 - bio.length} characters left. Shown on your public profile.</p>
+      </div>
+      <div>
+        <span className={labelCls}>Home location</span>
+        <LocationPicker value={home} onChange={setHome} />
+        <p className="mt-1 text-xs text-stone-500">Tap the map to move your pin. Neighbours never see the exact spot.</p>
+      </div>
+      <ErrorNote error={m.error} />
+      {m.isSuccess && <p role="status" className="rounded-xl bg-brand-light p-3 text-sm text-brand-dark">Saved. Your profile is up to date.</p>}
+      <div className="flex gap-2">
+        <button className={primaryBtn} disabled={m.isPending}>{m.isPending ? "Saving…" : "Save profile"}</button>
+        <button type="button" className="min-h-[48px] rounded-full px-5 text-sm font-semibold ring-1 ring-stone-300" onClick={() => setOpen(false)}>
+          Close
+        </button>
+      </div>
+    </form>
   );
 }

@@ -23,3 +23,13 @@
 - Below 1024 px the same pages keep the Map/List toggle and bottom sheets, so phone browsers still work.
 - Playwright runs the full demo path at 1440×900 (desktop) and a read-only browse check on an iPhone-sized browser.
 - Hard-coded map/pin colours switched to the Basil & Honey palette (#2e5e4e / #1f4337 / #d9a23c / #7a560f) to match the theme PR; everything else uses Tailwind tokens.
+
+## Kit BUILD_PLAN steps 1-10 (2026-11-07, thread "Complete BUILD_PLAN steps 1-10")
+- Krish added a second kit (Next.js + Floci). We keep the live Vite/Express/Prisma stack on ECS and port its features.
+- Landing page at `/` (signed-in users go to `/map`); the map moved to `/map`, `/about` always shows the landing page. Old `/?listing=<id>` links redirect to `/map?listing=<id>`.
+- Sign-up requires 16+ and the Terms & Conditions (ticked only through "I Accept" in the dialog); the server stores `termsAcceptedAt` and `termsVersion` (2026-11-03, kit `docs/TERMS.md`).
+- Early-access sign-ups upsert on lower-cased email and keep the first `?src=` seen.
+- Landing stats are all-time totals from collected pickups plus the seeded baseline; accounts ending `@example.test` are excluded.
+- Kit step 1b (SQS, SES, EventBridge on Floci) is skipped: those services aren't in our Terraform; the in-process job stays.
+- Contact address on Imprint/Privacy/Contact is `hello@freshshare.de` (one constant in `apps/web/src/content/site.ts`).
+- The SPA's 404 page renders client-side; Caddy still answers 200 for unknown paths.

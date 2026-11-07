@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import sharp from "sharp";
 import { jitter, mulberry32 } from "../lib/geo.js";
 import type { Storage } from "../lib/storage.js";
+import { TERMS_VERSION } from "./rules.js";
 
 interface SeedFile {
   demoPassword: string;
@@ -57,6 +58,7 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
 
   // Delete in dependency order.
   await prisma.$transaction([
+    prisma.earlyAccessSignup.deleteMany(),
     prisma.report.deleteMany(),
     prisma.notification.deleteMany(),
     prisma.alertSubscription.deleteMany(),
@@ -79,6 +81,7 @@ export async function runSeed(prisma: PrismaClient, storage: Storage, opts: { di
       data: {
         email: u.email, name: u.name, passwordHash, homeLat: u.homeLat, homeLng: u.homeLng,
         emailVerified: u.emailVerified, phoneVerified: u.phoneVerified, ratingAvg: u.ratingAvg, ratingCount: u.ratingCount,
+        termsAcceptedAt: now, termsVersion: TERMS_VERSION,
       },
     });
     users[u.key] = row.id;

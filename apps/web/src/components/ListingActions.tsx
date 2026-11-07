@@ -50,7 +50,7 @@ export function ListingActions({ listing }: { listing: Listing }) {
           {reserve.isPending ? "Reserving…" : "Reserve"}
         </button>
       ) : (
-        <Link to={`/signin?next=${encodeURIComponent(`/?listing=${listing.id}`)}`} className={`${primaryBtn} flex items-center justify-center`}>
+        <Link to={`/signin?next=${encodeURIComponent(`/map?listing=${listing.id}`)}`} className={`${primaryBtn} flex items-center justify-center`}>
           Sign in to reserve
         </Link>
       )}

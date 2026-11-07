@@ -6,6 +6,7 @@ import { COOKIE, cookieOptions, requireAuth, signToken, userId } from "../lib/au
 import { ah, HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
 import { authLimiter } from "../lib/rateLimit.js";
+import { TERMS_VERSION } from "../services/rules.js";
 import { meView } from "../services/users.js";
 
 export const auth = Router();
@@ -19,6 +20,8 @@ const registerBody = z.object({
   password: z.string().min(8, "Use at least 8 characters").max(200),
   homeLat: z.number().min(-90).max(90),
   homeLng: z.number().min(-180).max(180),
+  ageConfirmed: z.literal(true, { errorMap: () => ({ message: "You must be 16 or older to use FreshShare" }) }),
+  termsAccepted: z.literal(true, { errorMap: () => ({ message: "Please read and accept the Terms & Conditions" }) }),
 });
 
 const loginBody = z.object({
@@ -33,7 +36,15 @@ auth.post(
     const b = registerBody.parse(req.body);
     try {
       const user = await prisma.user.create({
-        data: { name: b.name, email: b.email, passwordHash: await bcrypt.hash(b.password, BCRYPT_COST), homeLat: b.homeLat, homeLng: b.homeLng },
+        data: {
+          name: b.name,
+          email: b.email,
+          passwordHash: await bcrypt.hash(b.password, BCRYPT_COST),
+          homeLat: b.homeLat,
+          homeLng: b.homeLng,
+          termsAcceptedAt: new Date(),
+          termsVersion: TERMS_VERSION,
+        },
       });
       res.cookie(COOKIE, signToken(user.id), cookieOptions(req));
       res.status(201).json({ user: await meView(user) });
@@ -101,6 +112,27 @@ me.post(
   ah(async (req, res) => {
     // DEMO: real email confirmation would send a link; here one tap marks it confirmed.
     const user = await prisma.user.update({ where: { id: userId(req) }, data: { emailVerified: true } });
+    res.json({ user: await meView(user) });
+  }),
+);
+
+const profileBody = z.object({
+  name: z.string().trim().min(2, "Please enter your name").max(60).optional(),
+  bio: z.string().trim().max(300, "Keep your bio under 300 characters").nullable().optional(),
+  homeLat: z.number().min(-90).max(90).optional(),
+  homeLng: z.number().min(-180).max(180).optional(),
+});
+
+me.patch(
+  "/",
+  requireAuth,
+  ah(async (req, res) => {
+    const b = profileBody.parse(req.body);
+    if ((b.homeLat === undefined) !== (b.homeLng === undefined)) throw new HttpError(400, "validation_error", "Send both homeLat and homeLng");
+    const user = await prisma.user.update({
+      where: { id: userId(req) },
+      data: { name: b.name, bio: b.bio === "" ? null : b.bio, homeLat: b.homeLat, homeLng: b.homeLng },
+    });
     res.json({ user: await meView(user) });
   }),
 );

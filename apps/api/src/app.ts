@@ -9,10 +9,12 @@ import { errorHandler, notFound } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
 import { auth, me } from "./routes/auth.js";
 import { claims } from "./routes/claims.js";
+import { earlyAccess } from "./routes/earlyAccess.js";
 import { fridges } from "./routes/fridges.js";
 import { health } from "./routes/health.js";
 import { impact } from "./routes/impact.js";
 import { listings } from "./routes/listings.js";
+import { users } from "./routes/users.js";
 
 export function createApp() {
   const app = express();
@@ -36,6 +38,8 @@ export function createApp() {
   api.use("/fridges", fridges);
   api.use("/claims", claims);
   api.use("/impact", impact);
+  api.use("/users", users);
+  api.use("/early-access", earlyAccess);
   api.use(notFound);
   app.use("/api", api);
 

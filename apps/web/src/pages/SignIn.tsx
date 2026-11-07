@@ -8,7 +8,7 @@ export function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [params] = useSearchParams();
-  const next = params.get("next") || "/";
+  const next = params.get("next") || "/map";
   const nav = useNavigate();
   const qc = useQueryClient();
   const m = useMutation({

@@ -3,10 +3,12 @@ import { z } from "zod";
 import { ah } from "../lib/errors.js";
 import { distanceM } from "../lib/geo.js";
 import { prisma } from "../lib/prisma.js";
+import { TEST_EMAIL_SUFFIX } from "../services/rules.js";
 
 export const impact = Router();
 
 export const KG_PER_PORTION = 0.4; // estimate, labelled as such in the UI
+export const CO2E_PER_KG = 2.5; // kg CO2e avoided per kg of food not wasted (kit PRODUCT.md)
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 const kg = (portions: number) => Math.round(portions * KG_PER_PORTION * 10) / 10;
 
@@ -42,5 +44,34 @@ impact.get(
       me = { portionsGiven: given, portionsReceived: received, kg: kg(given + received) };
     }
     res.json({ week: { portions, kg: kg(portions) }, me, kgPerPortion: KG_PER_PORTION, estimate: true });
+  }),
+);
+
+/** All-time totals for the landing page stats bar. Counted from collected pickups; test accounts are left out. */
+impact.get(
+  "/totals",
+  ah(async (_req, res) => {
+    const notTest = { email: { not: { endsWith: TEST_EMAIL_SUFFIX } } };
+    const [collected, neighbours, fridges] = await Promise.all([
+      prisma.claim.findMany({
+        where: { status: "collected", receiver: notTest, listing: { giver: notTest } },
+        select: { listing: { select: { portions: true } } },
+      }),
+      prisma.user.count({ where: notTest }),
+      prisma.fridge.count(),
+    ]);
+    const meals = collected.reduce((n, c) => n + c.listing.portions, 0);
+    const baselineRow = await prisma.setting.findUnique({ where: { key: "impactBaselinePortions" } });
+    const totalMeals = meals + Number(baselineRow?.value ?? 0);
+    const kgSaved = kg(totalMeals);
+    res.json({
+      meals: totalMeals,
+      kgSaved,
+      co2Kg: Math.round(kgSaved * CO2E_PER_KG),
+      neighbours,
+      fridges,
+      organizations: 0,
+      estimate: true,
+    });
   }),
 );
