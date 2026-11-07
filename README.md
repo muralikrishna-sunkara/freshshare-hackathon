@@ -40,6 +40,30 @@ git checkout -b build/mvp
 claude            # then paste the Block 0 prompt from docs/04-build-plan.md
 ```
 
+## Run locally
+
+Full stack in Docker (Postgres, api, web on http://localhost):
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+docker compose -f infra/docker-compose.yml exec api npx prisma db seed   # demo data + photos
+curl http://localhost/api/health
+```
+
+Watch mode (Node 20+, Postgres from compose):
+
+```bash
+cp .env.example .env
+docker compose -f infra/docker-compose.yml up -d db
+npm install
+npm run db:migrate && npm run db:seed
+npm run dev          # api on :4000, web on http://localhost:5173
+npm test             # API tests against a real Postgres (DATABASE_URL, default freshshare_test)
+npm run lint
+```
+
+Seeded users log in with the `demoPassword` from `data/seed.json`. On AWS, run **Actions → App build and deploy** with `seed=true` to reset the demo data.
+
 ## Privacy
 
 Survey respondents' contact details stay on the survey server. They are not in this repo, the seed data or the pitch.

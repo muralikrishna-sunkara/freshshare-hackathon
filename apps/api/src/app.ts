@@ -1,0 +1,36 @@
+import path from "node:path";
+import cookieParser from "cookie-parser";
+import express from "express";
+import helmet from "helmet";
+import { pinoHttp } from "pino-http";
+import { optionalAuth } from "./lib/auth.js";
+import { env } from "./lib/env.js";
+import { errorHandler, notFound } from "./lib/errors.js";
+import { logger } from "./lib/logger.js";
+import { health } from "./routes/health.js";
+import { listings } from "./routes/listings.js";
+
+export function createApp() {
+  const app = express();
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "same-site" } }));
+  app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === "/api/health" } }));
+  app.use(express.json({ limit: "100kb" }));
+  app.use(cookieParser());
+  app.use(optionalAuth);
+
+  if (env.STORAGE_DRIVER === "local") {
+    app.use("/uploads", express.static(path.resolve(env.UPLOADS_DIR), { maxAge: "1d" }));
+  }
+
+  const api = express.Router();
+  api.use("/health", health);
+  api.use("/listings", listings);
+  api.use(notFound);
+  app.use("/api", api);
+
+  app.use(notFound);
+  app.use(errorHandler);
+  return app;
+}

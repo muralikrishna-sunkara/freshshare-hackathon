@@ -1,0 +1,174 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  leftovers
+  fruit_veg
+  bread
+  packaged
+  dairy
+  other
+}
+
+enum Origin {
+  homemade
+  packaged
+  fresh_produce
+}
+
+enum ListingStatus {
+  available
+  reserved
+  collected
+  expired
+  removed
+}
+
+enum ClaimStatus {
+  pending
+  confirmed
+  collected
+  cancelled
+  lapsed
+}
+
+enum FridgeState {
+  stocked
+  empty
+  needs_cleaning
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  homeLat       Float
+  homeLng       Float
+  emailVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false)
+  ratingAvg     Float     @default(0)
+  ratingCount   Int       @default(0)
+  createdAt     DateTime  @default(now())
+  listings      Listing[]
+  claims        Claim[]
+}
+
+model Listing {
+  id           String        @id @default(cuid())
+  giverId      String
+  giver        User          @relation(fields: [giverId], references: [id])
+  title        String
+  description  String?
+  category     Category
+  origin       Origin
+  allergens    String[]
+  bestBefore   DateTime
+  photoUrl     String
+  lat          Float
+  lng          Float
+  publicLat    Float
+  publicLng    Float
+  handoverSpot String?
+  pickupFrom   DateTime
+  pickupUntil  DateTime
+  portions     Int           @default(1)
+  status       ListingStatus @default(available)
+  createdAt    DateTime      @default(now())
+  claims       Claim[]
+
+  @@index([status, lat, lng])
+}
+
+model Claim {
+  id         String      @id @default(cuid())
+  listingId  String
+  listing    Listing     @relation(fields: [listingId], references: [id])
+  receiverId String
+  receiver   User        @relation(fields: [receiverId], references: [id])
+  status     ClaimStatus @default(pending)
+  holdUntil  DateTime
+  createdAt  DateTime    @default(now())
+  messages   Message[]
+  ratings    Rating[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  claimId   String
+  claim     Claim    @relation(fields: [claimId], references: [id])
+  senderId  String
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model Rating {
+  id         String   @id @default(cuid())
+  claimId    String
+  claim      Claim    @relation(fields: [claimId], references: [id])
+  fromUserId String
+  toUserId   String
+  stars      Int
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([claimId, fromUserId])
+}
+
+model Fridge {
+  id           String          @id @default(cuid())
+  name         String
+  address      String
+  lat          Float
+  lng          Float
+  openingHours String
+  photoUrl     String?
+  checkIns     FridgeCheckIn[]
+}
+
+model FridgeCheckIn {
+  id        String      @id @default(cuid())
+  fridgeId  String
+  fridge    Fridge      @relation(fields: [fridgeId], references: [id])
+  userId    String
+  state     FridgeState
+  createdAt DateTime    @default(now())
+}
+
+model AlertSubscription {
+  id         String     @id @default(cuid())
+  userId     String
+  lat        Float
+  lng        Float
+  radiusM    Int        @default(2000)
+  categories Category[]
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  listingId String?
+  text      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  listingId String
+  userId    String
+  reason    String
+  createdAt DateTime @default(now())
+}

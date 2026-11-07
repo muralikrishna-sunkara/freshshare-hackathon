@@ -10,9 +10,12 @@ crash.log
 backend.hcl
 .terraform.tfstate.lock.info
 
-# Node (app comes tomorrow)
+# Node
 node_modules/
 .env
 
 # Lock files: generate with full platform hashes (see infra/README.md), then remove this line
 .terraform.lock.hcl
+dist/
+apps/api/uploads/
+*.tsbuildinfo
