@@ -38,7 +38,7 @@ mock_provider "aws" {
   }
   mock_resource "aws_sesv2_email_identity" {
     defaults = {
-      arn                     = "arn:aws:ses:eu-central-1:123456789012:identity/freshshare.de"
+      arn = "arn:aws:ses:eu-central-1:123456789012:identity/freshshare.de"
     }
   }
   mock_resource "aws_sesv2_configuration_set" {
