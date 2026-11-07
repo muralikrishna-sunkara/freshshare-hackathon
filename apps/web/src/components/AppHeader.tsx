@@ -9,11 +9,11 @@ export function AppHeader() {
   const me = useMe();
   return (
     <header className="z-[1100] flex h-16 shrink-0 items-center gap-2 border-b border-stone-200 bg-white px-4 lg:px-6">
-      <Link to="/" className="mr-2 text-xl font-extrabold tracking-tight text-brand-dark lg:mr-6">
+      <Link to={me.data ? "/map" : "/"} className="mr-2 text-xl font-extrabold tracking-tight text-brand-dark lg:mr-6">
         Fresh<span className="text-accent">Share</span>
       </Link>
       <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
-        <NavLink to="/" end className={navCls}>Find food</NavLink>
+        <NavLink to="/map" className={navCls}>Find food</NavLink>
         {me.data && <NavLink to="/pickups" className={navCls}>My pickups</NavLink>}
       </nav>
       <div className="ml-auto flex items-center gap-2">

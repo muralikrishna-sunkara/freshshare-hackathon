@@ -74,7 +74,7 @@ export function ShareFood() {
     onSuccess: (l) => {
       qc.invalidateQueries({ queryKey: ["listings"] });
       qc.invalidateQueries({ queryKey: ["me"] });
-      nav(`/?listing=${l.id}`, { replace: true });
+      nav(`/map?listing=${l.id}`, { replace: true });
     },
   });
 

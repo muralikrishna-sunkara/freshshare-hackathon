@@ -75,6 +75,9 @@ export interface Me {
   email: string;
   homeLat: number;
   homeLng: number;
+  bio: string | null;
+  role: "user" | "admin";
+  termsVersion: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
   verified: boolean;
@@ -99,7 +102,15 @@ export const fetchMe = () =>
 
 export const login = (email: string, password: string) => api<{ user: Me }>("/auth/login", json({ email, password })).then((r) => r.user);
 
-export const register = (b: { name: string; email: string; password: string; homeLat: number; homeLng: number }) =>
+export const register = (b: {
+  name: string;
+  email: string;
+  password: string;
+  homeLat: number;
+  homeLng: number;
+  ageConfirmed: boolean;
+  termsAccepted: boolean;
+}) =>
   api<{ user: Me }>("/auth/register", json(b)).then((r) => r.user);
 
 export const logout = () => fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -161,3 +172,33 @@ export interface Impact {
 }
 export const fetchImpact = (lat: number, lng: number, radius: number) =>
   api<Impact>(`/impact?${new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) })}`);
+
+export const updateProfile = (b: { name?: string; bio?: string | null; homeLat?: number; homeLng?: number }) =>
+  api<{ user: Me }>("/me", { ...json(b), method: "PATCH" }).then((r) => r.user);
+
+export interface PublicProfile {
+  id: string;
+  name: string;
+  bio: string | null;
+  verified: boolean;
+  ratingAvg: number;
+  ratingCount: number;
+  memberSince: string;
+  stats: { shared: number; given: number; received: number };
+  reviews: { id: string; stars: number; note: string | null; createdAt: string; from: { id: string; name: string } }[];
+}
+export const fetchPublicProfile = (id: string) => api<{ user: PublicProfile }>(`/users/${id}`).then((r) => r.user);
+
+export type EarlyAccessRole = "giver" | "receiver" | "business" | "fridge_host" | "organization";
+export const joinEarlyAccess = (b: { email: string; role: EarlyAccessRole; postcode?: string; source?: string; language?: string; consent: boolean }) =>
+  api<{ ok: true }>("/early-access", json(b));
+
+export interface ImpactTotals {
+  meals: number;
+  kgSaved: number;
+  co2Kg: number;
+  neighbours: number;
+  fridges: number;
+  organizations: number;
+}
+export const fetchImpactTotals = () => api<ImpactTotals>("/impact/totals");

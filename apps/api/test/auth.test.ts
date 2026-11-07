@@ -16,7 +16,7 @@ describe("auth", () => {
     const agent = request.agent(app);
     const res = await agent
       .post("/api/auth/register")
-      .send({ name: "Test Person", email: "Test@Demo.freshshare.de", password: "longenough", homeLat: 49.59, homeLng: 11.0 });
+      .send({ name: "Test Person", email: "Test@Demo.freshshare.de", password: "longenough", homeLat: 49.59, homeLng: 11.0, ageConfirmed: true, termsAccepted: true });
     expect(res.status).toBe(201);
     expect(res.headers["set-cookie"][0]).toMatch(/fs_token=.+HttpOnly/i);
     expect(res.body.user).not.toHaveProperty("passwordHash");
@@ -29,7 +29,7 @@ describe("auth", () => {
   it("rejects a duplicate email with 409", async () => {
     const res = await request(app)
       .post("/api/auth/register")
-      .send({ name: "Anna", email: "anna@demo.freshshare.de", password: "longenough", homeLat: 49.59, homeLng: 11.0 });
+      .send({ name: "Anna", email: "anna@demo.freshshare.de", password: "longenough", homeLat: 49.59, homeLng: 11.0, ageConfirmed: true, termsAccepted: true });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("email_taken");
   });

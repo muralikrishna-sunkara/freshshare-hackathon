@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
+import { Footer } from "./Footer";
 
 /** Standard page: app navigation on top, page title, centred content. `wide` for two-column pages. */
 export function Page({ title, children, wide = false }: { title: string; children: ReactNode; back?: string; wide?: boolean }) {
@@ -10,6 +11,7 @@ export function Page({ title, children, wide = false }: { title: string; childre
         <h1 className="mb-6 text-2xl font-bold lg:text-3xl">{title}</h1>
         {children}
       </main>
+      <Footer />
     </div>
   );
 }

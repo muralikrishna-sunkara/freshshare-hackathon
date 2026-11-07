@@ -39,6 +39,19 @@ enum ClaimStatus {
   lapsed
 }
 
+enum UserRole {
+  user
+  admin
+}
+
+enum EarlyAccessRole {
+  giver
+  receiver
+  business
+  fridge_host
+  organization
+}
+
 enum FridgeState {
   stocked
   empty
@@ -46,19 +59,23 @@ enum FridgeState {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  name          String
-  homeLat       Float
-  homeLng       Float
-  emailVerified Boolean   @default(false)
-  phoneVerified Boolean   @default(false)
-  ratingAvg     Float     @default(0)
-  ratingCount   Int       @default(0)
-  createdAt     DateTime  @default(now())
-  listings      Listing[]
-  claims        Claim[]
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  name            String
+  homeLat         Float
+  homeLng         Float
+  emailVerified   Boolean   @default(false)
+  phoneVerified   Boolean   @default(false)
+  ratingAvg       Float     @default(0)
+  ratingCount     Int       @default(0)
+  role            UserRole  @default(user)
+  bio             String?
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+  createdAt       DateTime  @default(now())
+  listings        Listing[]
+  claims          Claim[]
 }
 
 model Listing {
@@ -171,4 +188,18 @@ model Report {
   userId    String
   reason    String
   createdAt DateTime @default(now())
+}
+
+model EarlyAccessSignup {
+  id        String          @id @default(cuid())
+  email     String          @unique
+  role      EarlyAccessRole
+  postcode  String?
+  source    String?
+  language  String?
+  consentAt DateTime
+  createdAt DateTime        @default(now())
+
+  @@index([role])
+  @@index([source])
 }

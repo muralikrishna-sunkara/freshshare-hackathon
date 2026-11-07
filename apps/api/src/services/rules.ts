@@ -9,3 +9,9 @@ export const RAW_MEAT_MESSAGE =
 
 /** Homemade food leaves the map 48 h after posting, even if its best-before date is later. */
 export const HOMEMADE_MAX_HOURS = 48;
+
+/** Version of the Terms & Conditions text a user accepts at sign-up (docs/TERMS.md in the kit). */
+export const TERMS_VERSION = "2026-11-03";
+
+/** Emails ending here are test accounts and are left out of public stats. */
+export const TEST_EMAIL_SUFFIX = "@example.test";

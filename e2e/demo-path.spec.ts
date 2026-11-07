@@ -10,7 +10,7 @@ async function signIn(browser: Browser, email: string): Promise<Page> {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/map$/);
   return page;
 }
 
@@ -62,6 +62,6 @@ test("Sara reserves Anna's lasagne, Anna confirms, Sara collects and rates", asy
   await expect(sara.getByText(/You rated Anna/)).toBeVisible();
 
   // Impact counter went up by the lasagne's 3 portions
-  await sara.goto("/");
+  await sara.goto("/map");
   await expect(sara.getByText(`saved ${portionsBefore + 3} portions`, { exact: false })).toBeVisible();
 });
