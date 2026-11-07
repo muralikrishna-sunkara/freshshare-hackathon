@@ -138,12 +138,14 @@ run "real_images_and_byo_certificate" {
 run "notification_email_via_ses" {
   command = apply # mocked providers: nothing is created in AWS
 
+  # BYO certificate: the mocked ACM certificate has no validation options to plan from.
   variables {
     api_image              = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/freshshare-dev/api:abc123"
     web_image              = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/freshshare-dev/web:abc123"
     domain_name            = "freshshare.de"
     route53_zone_id        = "Z0000000000000000000"
     ses_sandbox_recipients = ["tester@example.com"]
+    certificate_arn        = "arn:aws:acm:eu-central-1:123456789012:certificate/11111111-2222-3333-4444-555555555555"
   }
 
   assert {
