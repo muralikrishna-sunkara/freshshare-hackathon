@@ -4,7 +4,7 @@ import { AdminPage } from "./pages/Admin";
 import { ClaimPage } from "./pages/ClaimPage";
 import { FridgePage, FridgesPage, SuggestFridgePage } from "./pages/Fridges";
 import { BulkClaimPage, NewBulkClaimPage, OrgDashboardPage, OrganizationPage, OrganizationsPage, RegisterOrganizationPage } from "./pages/Organizations";
-import { ContactPage, ImprintPage, NotFoundPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
+import { ContactPage, CreditsPage, ImprintPage, NotFoundPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
 import { Landing } from "./pages/Landing";
 import { ListingPage } from "./pages/ListingPage";
 import { MapHome } from "./pages/MapHome";
@@ -26,6 +26,7 @@ export function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/imprint" element={<ImprintPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/credits" element={<CreditsPage />} />
         <Route path="/users/:id" element={<PublicProfile />} />
         <Route path="/listings/:id" element={<ListingPage />} />
         <Route path="/fridges" element={<FridgesPage />} />

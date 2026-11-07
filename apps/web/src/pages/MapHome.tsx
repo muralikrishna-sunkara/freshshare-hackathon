@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { fetchFridges, fetchImpact, fetchListing, fetchNearby, type Category, type DietaryTag, type Fridge, type Listing } from "../api/client";
 import { AppHeader } from "../components/AppHeader";
 import { BottomSheet } from "../components/BottomSheet";
@@ -150,12 +150,31 @@ export function MapHome() {
     </div>
   );
 
+  const nextRadius = RADII.find((r) => r > radius);
+  const filtered = !!category || !!diet;
   const emptyState = !listingsQ.isLoading && !listingsQ.isError && listings.length === 0 && (
-    <div className="rounded-2xl bg-white p-4 text-center shadow-lg ring-1 ring-stone-200">
-      <p className="font-semibold">Nothing within {radiusLabel} yet.</p>
-      <p className="text-sm text-stone-600">
-        There {fridges.length === 1 ? "is 1 community fridge" : `are ${fridges.length} community fridges`} nearby.
-      </p>
+    <div className="space-y-3 rounded-2xl bg-white p-4 text-center shadow-lg ring-1 ring-stone-200">
+      <div>
+        <p className="font-semibold">Nothing {filtered ? "matching your filters " : ""}within {radiusLabel} right now.</p>
+        <p className="text-sm text-stone-600">
+          {fridges.length > 0
+            ? `There ${fridges.length === 1 ? "is 1 community fridge" : `are ${fridges.length} community fridges`} nearby. They are on the map.`
+            : "New food is posted every day. Check back later."}
+        </p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2 text-sm">
+        {filtered && (
+          <button className="min-h-[40px] rounded-full px-4 font-semibold ring-1 ring-stone-300" onClick={() => setParams((p) => { const n = new URLSearchParams(p); n.delete("category"); n.delete("diet"); return n; }, { replace: true })}>
+            Clear filters
+          </button>
+        )}
+        {nextRadius && (
+          <button className="min-h-[40px] rounded-full bg-brand-dark px-4 font-bold text-white" onClick={() => setRadius(nextRadius)}>
+            Search {formatDistance(nextRadius)}
+          </button>
+        )}
+        <Link to="/share" className="min-h-[40px] rounded-full bg-accent px-4 py-2 font-bold text-white">Share food</Link>
+      </div>
     </div>
   );
 

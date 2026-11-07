@@ -6,6 +6,7 @@ const links = [
   ["/privacy", "Privacy"],
   ["/imprint", "Imprint"],
   ["/contact", "Contact"],
+  ["/credits", "Credits"],
 ] as const;
 
 export function Footer() {

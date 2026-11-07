@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Page } from "../components/Page";
 import { TermsText } from "../components/TermsText";
+import { PHOTO_CREDITS } from "../content/credits";
 import { CONTACT_EMAIL } from "../content/site";
 
 const Prose = ({ children }: { children: ReactNode }) => (
@@ -88,6 +89,33 @@ export function ContactPage() {
           as an organization or fridge host.
         </p>
         <p>Something unsafe on a listing? Use the Report button on the listing so our moderators see it straight away.</p>
+      </Prose>
+    </Page>
+  );
+}
+
+export function CreditsPage() {
+  return (
+    <Page title="Photo credits" wide>
+      <Prose>
+        <p>
+          The demo food photos come from Wikimedia Commons and are used under the licences below. They were resized and cropped; no other
+          changes. Photos that neighbours upload are their own.
+        </p>
+        <p>
+          Map data © <a className="text-brand-dark underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>.
+        </p>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {PHOTO_CREDITS.map((c) => (
+            <li key={c.file} className="rounded-xl bg-stone-50 p-3 text-sm ring-1 ring-stone-200">
+              <a className="font-semibold text-brand-dark underline" href={c.sourceUrl} target="_blank" rel="noreferrer">{c.source}</a>
+              <p>by {c.author}</p>
+              <p>
+                {c.licenseUrl ? <a className="underline" href={c.licenseUrl} target="_blank" rel="noreferrer">{c.license}</a> : c.license}
+              </p>
+            </li>
+          ))}
+        </ul>
       </Prose>
     </Page>
   );
