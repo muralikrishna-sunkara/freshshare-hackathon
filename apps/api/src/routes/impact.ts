@@ -52,13 +52,14 @@ impact.get(
   "/totals",
   ah(async (_req, res) => {
     const notTest = { email: { not: { endsWith: TEST_EMAIL_SUFFIX } } };
-    const [collected, neighbours, fridges] = await Promise.all([
+    const [collected, neighbours, fridges, organizations] = await Promise.all([
       prisma.claim.findMany({
         where: { status: "collected", receiver: notTest, listing: { giver: notTest } },
         select: { listing: { select: { portions: true } } },
       }),
       prisma.user.count({ where: notTest }),
-      prisma.fridge.count(),
+      prisma.fridge.count({ where: { status: "active" } }),
+      prisma.organization.count({ where: { status: "approved" } }),
     ]);
     const meals = collected.reduce((n, c) => n + c.listing.portions, 0);
     const baselineRow = await prisma.setting.findUnique({ where: { key: "impactBaselinePortions" } });
@@ -70,7 +71,7 @@ impact.get(
       co2Kg: Math.round(kgSaved * CO2E_PER_KG),
       neighbours,
       fridges,
-      organizations: 0,
+      organizations,
       estimate: true,
     });
   }),

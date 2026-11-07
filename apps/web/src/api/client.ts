@@ -33,6 +33,7 @@ export interface Listing {
   hasHandoverSpot: boolean;
   distanceM?: number;
   giver: Giver;
+  fridge?: { id: string; name?: string; address?: string } | null;
   lat?: number;
   lng?: number;
   handoverSpot?: string | null;
@@ -58,16 +59,20 @@ export const fetchNearby = (lat: number, lng: number, radius: number, category?:
   return api<{ listings: Listing[] }>(`/listings?${q}`).then((r) => r.listings);
 };
 
+export type FridgeKind = "fridge" | "pantry" | "dropoff";
+export type FillLevel = "empty" | "low" | "half" | "full";
+
 export interface Fridge {
   id: string;
   name: string;
+  kind?: FridgeKind;
   address: string;
   lat: number;
   lng: number;
   openingHours: string;
   photoUrl: string | null;
   distanceM: number;
-  lastCheckIn: { state: "stocked" | "empty" | "needs_cleaning"; at: string } | null;
+  lastCheckIn: { state: "stocked" | "empty" | "needs_cleaning"; fillLevel?: FillLevel | null; at: string } | null;
 }
 
 export const fetchFridges = (lat: number, lng: number, radius: number) =>
@@ -217,3 +222,94 @@ export interface MyListing extends Listing {
   handoverSpot: string | null;
 }
 export const fetchMyListings = () => api<{ listings: MyListing[] }>("/listings/mine/all").then((r) => r.listings);
+
+const send = (method: string, body?: unknown): RequestInit => ({
+  method,
+  headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+  body: body === undefined ? undefined : JSON.stringify(body),
+});
+
+// Fridges
+export interface FridgeDetail {
+  id: string;
+  name: string;
+  kind: FridgeKind;
+  description: string | null;
+  address: string;
+  lat: number;
+  lng: number;
+  openingHours: string;
+  accessNotes: string | null;
+  photoUrl: string | null;
+  status: "pending" | "active" | "inactive" | "rejected";
+  checkIns: { id: string; state: FridgeState; fillLevel: FillLevel | null; contents: string | null; at: string; by: { id: string; name: string } }[];
+  listings: Listing[];
+}
+export const fetchFridge = (id: string) => api<{ fridge: FridgeDetail }>(`/fridges/${id}`).then((r) => r.fridge);
+export const fridgeCheckIn = (id: string, fillLevel: FillLevel, contents?: string) =>
+  api<{ message: string }>(`/fridges/${id}/checkins`, json({ fillLevel, contents }));
+export const suggestFridge = (b: {
+  name: string; kind: FridgeKind; description?: string; address: string; lat: number; lng: number; openingHours: string; accessNotes?: string;
+}) => api<{ fridge: { id: string }; message: string }>("/fridges", json(b));
+
+// Organizations
+export type OrgType = "food_bank" | "ngo" | "charity" | "community_center" | "religious_org" | "other";
+export type OrgRole = "admin" | "manager" | "volunteer" | "viewer";
+export interface Organization {
+  id: string; name: string; type: OrgType; website: string | null; email: string; city: string; address: string; lat: number; lng: number;
+  description: string; mission: string | null; serviceArea: string | null; logoUrl: string | null; status: string; verified: boolean;
+  myRole?: OrgRole | null;
+}
+export const fetchOrganizations = () => api<{ organizations: Organization[] }>("/organizations").then((r) => r.organizations);
+export const fetchOrganization = (id: string) => api<{ organization: Organization }>(`/organizations/${id}`).then((r) => r.organization);
+export const fetchMyOrgs = () => api<{ memberships: { role: OrgRole; organization: Organization }[] }>("/organizations/mine/all").then((r) => r.memberships);
+export const registerOrganization = (form: FormData) =>
+  api<{ organization: { id: string }; message: string }>("/organizations", { method: "POST", body: form });
+
+export interface OrgDashboard {
+  organization: Organization;
+  members: { userId: string; name: string; email?: string; role: OrgRole; joinedAt: string }[];
+  itemsCollected: number;
+  bulkClaims: { id: string; name: string; status: BulkStatus; scheduledPickupDate: string; items: number; collected: number }[];
+  documents: { id: string; filename: string; contentType: string; size: number }[];
+}
+export const fetchOrgDashboard = (id: string) => api<OrgDashboard>(`/organizations/${id}/dashboard`);
+export const inviteMember = (id: string, email: string, role: OrgRole) => api<{ message: string }>(`/organizations/${id}/members`, json({ email, role }));
+export const changeMemberRole = (id: string, userId: string, role: OrgRole) => api(`/organizations/${id}/members/${userId}`, send("PATCH", { role }));
+export const removeMember = (id: string, userId: string) =>
+  fetch(`/api/organizations/${id}/members/${userId}`, { method: "DELETE", credentials: "include" }).then(async (r) => {
+    if (!r.ok) {
+      const b = await r.json().catch(() => ({}));
+      throw new ApiError(r.status, b?.error?.code ?? "error", b?.error?.message ?? r.statusText);
+    }
+  });
+export const fetchCandidates = (id: string, radius: number) =>
+  api<{ listings: Listing[] }>(`/organizations/${id}/candidates?radius=${radius}`).then((r) => r.listings);
+
+export type BulkStatus = "pending" | "in_progress" | "partially_completed" | "completed" | "cancelled";
+export interface BulkClaim {
+  id: string; name: string; notes: string | null; status: BulkStatus; scheduledPickupDate: string;
+  organization: { id: string; name: string }; myRole: OrgRole;
+  items: {
+    id: string; claimId: string; claimStatus: ClaimStatus; isCollected: boolean; collectedAt: string | null;
+    listing: { id: string; title: string; photoUrl: string; portions: number; pickupUntil: string; giver: { id: string; name: string }; distanceM: number; lat?: number; lng?: number; handoverSpot?: string | null };
+  }[];
+}
+export const createBulkClaim = (orgId: string, b: { name: string; notes?: string; scheduledPickupDate: string; listingIds: string[] }) =>
+  api<{ bulkClaim: { id: string }; skipped: string[] }>(`/organizations/${orgId}/bulk-claims`, json(b));
+export const fetchBulkClaim = (id: string) => api<{ bulkClaim: BulkClaim }>(`/bulk-claims/${id}`).then((r) => r.bulkClaim);
+export const collectBulkItem = (id: string, itemId: string) =>
+  api<{ bulkClaim: BulkClaim }>(`/bulk-claims/${id}/items/${itemId}/collect`, { method: "POST" }).then((r) => r.bulkClaim);
+export const cancelBulkClaim = (id: string) => api<{ bulkClaim: BulkClaim }>(`/bulk-claims/${id}/cancel`, { method: "POST" }).then((r) => r.bulkClaim);
+
+// Admin
+export interface AdminPending {
+  fridges: (FridgeDetail & { createdAt: string; createdBy: { id: string; name?: string } | null })[];
+  organizations: (Organization & {
+    createdAt: string; contactName: string; registrationNumber: string | null; createdBy: { id: string; name?: string };
+    documents: { id: string; filename: string; contentType: string; size: number }[];
+  })[];
+}
+export const fetchAdminPending = () => api<AdminPending>("/admin/pending");
+export const adminDecide = (kind: "fridges" | "organizations", id: string, decision: "approve" | "reject") =>
+  api<{ status: string }>(`/admin/${kind}/${id}/${decision}`, { method: "POST" });

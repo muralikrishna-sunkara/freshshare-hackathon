@@ -4,7 +4,7 @@ import { createApp } from "../src/app.js";
 import { prisma } from "../src/lib/prisma.js";
 import { TERMS_VERSION } from "../src/services/rules.js";
 import type { SeedResult } from "../src/services/seed.js";
-import { loginAs, seedDb } from "./helpers.js";
+import { loginAs, seedDb, seedFile } from "./helpers.js";
 
 const app = createApp();
 let seed: SeedResult;
@@ -72,7 +72,8 @@ describe("impact totals", () => {
     expect(res.body.neighbours).toBe(realUsers);
     expect(res.body.meals).toBeGreaterThan(0);
     expect(res.body.co2Kg).toBe(Math.round(res.body.kgSaved * 2.5));
-    expect(res.body.fridges).toBe(Object.keys(seed.fridges).length);
+    expect(res.body.fridges).toBe(seedFile.fridges.length); // active only, not the pending suggestion
+    expect(res.body.organizations).toBe(1);
   });
 });
 

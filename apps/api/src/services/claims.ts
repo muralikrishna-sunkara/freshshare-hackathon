@@ -3,6 +3,7 @@ import { HttpError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { prisma } from "../lib/prisma.js";
 import { giverView, publicListing } from "./listings.js";
+import { recomputeBulk } from "./orgs.js";
 import { HOMEMADE_MAX_HOURS } from "./rules.js";
 
 export const HOLD_MINUTES = 30;
@@ -82,17 +83,22 @@ export async function transition(id: string, viewerId: string, action: "confirm"
       prisma.listing.updateMany({ where: { id: c.listingId, status: "reserved" }, data: { status: "available" } }),
     ]);
   }
+  if (c.bulkClaimId) await recomputeBulk(c.bulkClaimId);
   return loadClaim(id, viewerId);
 }
 
 /** Every minute: lapse expired holds (freeing the listing) and expire old listings. */
 export async function housekeeping(now = new Date()) {
-  const lapsed = await prisma.claim.findMany({ where: { status: "pending", holdUntil: { lt: now } }, select: { id: true, listingId: true } });
+  const lapsed = await prisma.claim.findMany({
+    where: { status: "pending", holdUntil: { lt: now } },
+    select: { id: true, listingId: true, bulkClaimId: true },
+  });
   for (const c of lapsed) {
     await prisma.$transaction([
       prisma.claim.update({ where: { id: c.id }, data: { status: "lapsed" } }),
       prisma.listing.updateMany({ where: { id: c.listingId, status: "reserved" }, data: { status: "available" } }),
     ]);
+    if (c.bulkClaimId) await recomputeBulk(c.bulkClaimId);
   }
   const homemadeCutoff = new Date(now.getTime() - HOMEMADE_MAX_HOURS * 3600_000);
   const expired = await prisma.listing.updateMany({

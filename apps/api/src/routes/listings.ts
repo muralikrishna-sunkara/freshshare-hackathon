@@ -65,6 +65,8 @@ const createBody = z
     handoverSpot: optionalText(120),
     // "Post again": reuse the photos of one of your own earlier listings when no new photo is attached.
     fromListingId: z.string().min(1).max(40).optional(),
+    // "Drop at a community fridge": the listing's place is that (public) fridge instead of the giver's home.
+    fridgeId: z.string().min(1).max(40).optional(),
     storedCold: ticked,
     notPastDate: ticked,
     wouldEatIt: ticked,
@@ -108,15 +110,21 @@ listings.post(
 
     const giver = await prisma.user.findUnique({ where: { id: giverId } });
     if (!giver) throw new HttpError(401, "unauthenticated", "Please sign in first");
+    let fridge = null;
+    if (b.fridgeId) {
+      fridge = await prisma.fridge.findUnique({ where: { id: b.fridgeId } });
+      if (!fridge || fridge.status !== "active") throw new HttpError(400, "bad_fridge", "Please pick an approved community fridge");
+    }
     const encoded = await Promise.all(uploads.map((f) => toWebp(f.buffer)));
-    const pub = jitter(giver.homeLat, giver.homeLng);
-    const area = await reverseArea(giver.homeLat, giver.homeLng);
+    const place = fridge ? { lat: fridge.lat, lng: fridge.lng } : { lat: giver.homeLat, lng: giver.homeLng };
+    const pub = fridge ? place : jitter(place.lat, place.lng);
+    const area = await reverseArea(place.lat, place.lng);
 
     const created = await prisma.listing.create({
       data: {
         giverId, title: b.title, description: b.description, category: b.category, origin: b.origin, allergens: b.allergens,
         dietaryTags: b.dietaryTags, weightKg: b.weightKg ?? null, postcode: area.postcode, areaName: area.areaName,
-        bestBefore: b.bestBefore, photoUrl: reusedPhotos[0] ?? "", photos: reusedPhotos, lat: giver.homeLat, lng: giver.homeLng,
+        bestBefore: b.bestBefore, photoUrl: reusedPhotos[0] ?? "", photos: reusedPhotos, lat: place.lat, lng: place.lng, fridgeId: fridge?.id ?? null,
         publicLat: pub.lat, publicLng: pub.lng, handoverSpot: b.handoverSpot, pickupFrom: b.pickupFrom, pickupUntil: b.pickupUntil,
         portions: b.portions,
       },
@@ -127,9 +135,9 @@ listings.post(
         const photos = await Promise.all(
           encoded.map((buf, i) => storage().put(`listings/${created.id}${i === 0 ? "" : `-${i}`}.webp`, buf, "image/webp")),
         );
-        l = await prisma.listing.update({ where: { id: created.id }, data: { photoUrl: photos[0], photos }, include: { giver: true } });
+        l = await prisma.listing.update({ where: { id: created.id }, data: { photoUrl: photos[0], photos }, include: { giver: true, fridge: true } });
       } else {
-        l = await prisma.listing.findUniqueOrThrow({ where: { id: created.id }, include: { giver: true } });
+        l = await prisma.listing.findUniqueOrThrow({ where: { id: created.id }, include: { giver: true, fridge: true } });
       }
       res.status(201).json({ listing: { ...publicListing(l), lat: l.lat, lng: l.lng, handoverSpot: l.handoverSpot } });
     } catch (e) {
@@ -160,7 +168,7 @@ listings.get(
     const id = z.string().min(1).parse(req.params.id);
     const l = await prisma.listing.findUnique({
       where: { id },
-      include: { giver: true, claims: { orderBy: { createdAt: "desc" }, select: { id: true, receiverId: true, status: true } } },
+      include: { giver: true, fridge: true, claims: { orderBy: { createdAt: "desc" }, select: { id: true, receiverId: true, status: true } } },
     });
     if (!l || l.status === "removed") throw new HttpError(404, "not_found", "Listing not found");
     const viewer = req.user?.id;

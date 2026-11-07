@@ -56,6 +56,7 @@ export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
           <Link to="/signin" className="block text-sm font-semibold text-brand-dark underline">Sign in to check in</Link>
         )}
         {m.isSuccess && <p className="text-sm text-brand-dark">Thanks! Neighbours will see this.</p>}
+        <Link to={`/fridges/${f.id}`} className="block pt-2 text-sm font-semibold text-brand-dark underline">Open fridge page: history, what's inside, check in</Link>
         <ErrorNote error={m.error} />
       </div>
     </div>

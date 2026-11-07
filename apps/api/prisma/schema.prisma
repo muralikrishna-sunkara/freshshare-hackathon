@@ -67,6 +67,58 @@ enum EarlyAccessRole {
   organization
 }
 
+enum FridgeKind {
+  fridge
+  pantry
+  dropoff
+}
+
+enum FridgeStatus {
+  pending
+  active
+  inactive
+  rejected
+}
+
+enum FillLevel {
+  empty
+  low
+  half
+  full
+}
+
+enum OrgType {
+  food_bank
+  ngo
+  charity
+  community_center
+  religious_org
+  other
+}
+
+enum OrgStatus {
+  pending
+  under_review
+  approved
+  rejected
+  suspended
+}
+
+enum OrgRole {
+  admin
+  manager
+  volunteer
+  viewer
+}
+
+enum BulkClaimStatus {
+  pending
+  in_progress
+  partially_completed
+  completed
+  cancelled
+}
+
 enum FridgeState {
   stocked
   empty
@@ -114,6 +166,8 @@ model Listing {
   publicLat    Float
   publicLng    Float
   handoverSpot String?
+  fridgeId     String?
+  fridge       Fridge?       @relation(fields: [fridgeId], references: [id])
   pickupFrom   DateTime
   pickupUntil  DateTime
   portions     Int           @default(1)
@@ -125,16 +179,19 @@ model Listing {
 }
 
 model Claim {
-  id         String      @id @default(cuid())
-  listingId  String
-  listing    Listing     @relation(fields: [listingId], references: [id])
-  receiverId String
-  receiver   User        @relation(fields: [receiverId], references: [id])
-  status     ClaimStatus @default(pending)
-  holdUntil  DateTime
-  createdAt  DateTime    @default(now())
-  messages   Message[]
-  ratings    Rating[]
+  id             String         @id @default(cuid())
+  listingId      String
+  listing        Listing        @relation(fields: [listingId], references: [id])
+  receiverId     String
+  receiver       User           @relation(fields: [receiverId], references: [id])
+  status         ClaimStatus    @default(pending)
+  holdUntil      DateTime
+  organizationId String?
+  bulkClaimId    String?
+  createdAt      DateTime       @default(now())
+  messages       Message[]
+  ratings        Rating[]
+  bulkItem       BulkClaimItem?
 }
 
 model Message {
@@ -162,12 +219,22 @@ model Rating {
 model Fridge {
   id           String          @id @default(cuid())
   name         String
+  kind         FridgeKind      @default(fridge)
+  description  String?
   address      String
   lat          Float
   lng          Float
   openingHours String
+  accessNotes  String?
   photoUrl     String?
+  status       FridgeStatus    @default(active)
+  createdById  String?
+  reviewedById String?
+  createdAt    DateTime        @default(now())
   checkIns     FridgeCheckIn[]
+  listings     Listing[]
+
+  @@index([status])
 }
 
 model FridgeCheckIn {
@@ -176,7 +243,87 @@ model FridgeCheckIn {
   fridge    Fridge      @relation(fields: [fridgeId], references: [id])
   userId    String
   state     FridgeState
+  fillLevel FillLevel?
+  contents  String?
   createdAt DateTime    @default(now())
+}
+
+model Organization {
+  id                 String                 @id @default(cuid())
+  name               String
+  type               OrgType
+  email              String
+  website            String?
+  address            String
+  city               String
+  lat                Float
+  lng                Float
+  description        String
+  mission            String?
+  serviceArea        String?
+  contactName        String
+  registrationNumber String?
+  logoUrl            String?
+  status             OrgStatus              @default(pending)
+  createdById        String
+  verifiedById       String?
+  verifiedAt         DateTime?
+  createdAt          DateTime               @default(now())
+  members            OrganizationMember[]
+  documents          OrganizationDocument[]
+  bulkClaims         BulkClaim[]
+
+  @@index([status])
+}
+
+/// Verification documents live in Postgres (not the public photo bucket) so only site admins and org admins can read them.
+model OrganizationDocument {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  filename       String
+  contentType    String
+  size           Int
+  data           Bytes
+  createdAt      DateTime     @default(now())
+}
+
+model OrganizationMember {
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  role           OrgRole
+  joinedAt       DateTime     @default(now())
+
+  @@id([organizationId, userId])
+  @@index([userId])
+}
+
+model BulkClaim {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  organization        Organization    @relation(fields: [organizationId], references: [id])
+  createdById         String
+  name                String
+  notes               String?
+  scheduledPickupDate DateTime
+  status              BulkClaimStatus @default(pending)
+  createdAt           DateTime        @default(now())
+  completedAt         DateTime?
+  items               BulkClaimItem[]
+}
+
+model BulkClaimItem {
+  id          String    @id @default(cuid())
+  bulkClaimId String
+  bulkClaim   BulkClaim @relation(fields: [bulkClaimId], references: [id], onDelete: Cascade)
+  listingId   String
+  claimId     String    @unique
+  claim       Claim     @relation(fields: [claimId], references: [id])
+  isCollected Boolean   @default(false)
+  collectedAt DateTime?
+
+  @@unique([bulkClaimId, listingId])
 }
 
 model AlertSubscription {

@@ -40,3 +40,9 @@
 - Givers can decline a pending request (`declined`), which frees the listing. The losing reserve says "Someone else was quicker".
 - "Post again" (on My pickups and on your own listing) copies fields and photos into the share form with fresh dates.
 - Reports (listing or person, reason list from the kit plus harassment) go to an admin queue; repeats of an open report are ignored.
+- Fridges get `kind`, description, access notes and a status. Suggestions are `pending` and 404 for everyone but the suggester and admins until approved. Check-ins record a fill level (empty/low/half/full) and what's inside; the older stocked/empty/needs_cleaning `state` is kept in step for the map.
+- "Drop at a community fridge" puts the listing at that fridge's public location (no jitter, since it's a public place).
+- Organizations: register → `pending`, creator becomes org admin. Directory and profile show approved orgs only (members and admins see their pending one). Verification documents (PDF/JPG/PNG ≤ 10 MB, file signature checked) are stored in Postgres, not S3, and streamed only to site admins and that org's admins.
+- Org permissions go through `requireOrgRole`; anyone without the role gets 404 (so viewers don't see the bulk-claim form). The last admin can't be removed or demoted.
+- Bulk claims reserve each picked listing with the same atomic available → reserved guard and create a normal pending claim per item, held until the listing's pickup window ends. Status: pending → in_progress (first item confirmed) → partially_completed → completed, or cancelled.
+- Site admins: `User.role = admin` (seeded `admin@demo.freshshare.de`). `/api/admin/*` answers 403 to non-admins. `/admin` approves fridges and organizations.

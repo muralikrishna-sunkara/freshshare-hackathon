@@ -15,7 +15,7 @@ export const giverView = (u: GiverRow) => ({
 
 /** Public fields of a listing. Never includes exact lat/lng. */
 export function publicListing(
-  l: Prisma.ListingGetPayload<{ include: { giver: true } }>,
+  l: Prisma.ListingGetPayload<{ include: { giver: true } }> & { fridge?: { id: string; name: string; address: string } | null },
   distanceM?: number,
 ) {
   return {
@@ -41,6 +41,8 @@ export function publicListing(
     hasHandoverSpot: l.handoverSpot !== null,
     ...(distanceM !== undefined ? { distanceM: roundDistance(distanceM) } : {}),
     giver: giverView(l.giver),
+    // Dropped at a community fridge: that place is public, so name and address are shown to everyone.
+    fridge: l.fridge ? { id: l.fridge.id, name: l.fridge.name, address: l.fridge.address } : l.fridgeId ? { id: l.fridgeId } : null,
   };
 }
 
@@ -66,7 +68,7 @@ export async function findNearby(lat: number, lng: number, radius: number, categ
     ORDER BY distance_m
     LIMIT 100`;
   if (rows.length === 0) return [];
-  const listings = await prisma.listing.findMany({ where: { id: { in: rows.map((r) => r.id) } }, include: { giver: true } });
+  const listings = await prisma.listing.findMany({ where: { id: { in: rows.map((r) => r.id) } }, include: { giver: true, fridge: true } });
   const byId = new Map(listings.map((l) => [l.id, l]));
   return rows.flatMap((r) => {
     const l = byId.get(r.id);
