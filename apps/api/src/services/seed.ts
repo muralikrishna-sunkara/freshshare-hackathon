@@ -28,7 +28,7 @@ interface SeedFile {
   impactBaseline?: { portionsThisWeek: number };
   organizations?: {
     key: string; name: string; type: OrgType; email: string; website?: string; address: string; city: string; lat: number; lng: number;
-    description: string; mission?: string; serviceArea?: string; contactName: string; status: OrgStatus; members: { user: string; role: OrgRole }[];
+    description: string; mission?: string; serviceArea?: string; contactName: string; status: OrgStatus; logo?: string; members: { user: string; role: OrgRole }[];
   }[];
   pendingFridges?: { key: string; name: string; kind: FridgeKind; address: string; lat: number; lng: number; openingHours: string; description?: string; accessNotes?: string; suggestedBy: string }[];
 }
@@ -73,6 +73,11 @@ export async function runSeed(
     prisma.report.deleteMany(),
     prisma.notification.deleteMany(),
     prisma.alertSubscription.deleteMany(),
+    prisma.pushSubscription.deleteMany(),
+    prisma.passwordReset.deleteMany(),
+    prisma.listingSchedule.deleteMany(),
+    prisma.block.deleteMany(),
+    prisma.listingWaitlist.deleteMany(),
     prisma.bulkClaimItem.deleteMany(),
     prisma.bulkClaim.deleteMany(),
     prisma.organizationDocument.deleteMany(),
@@ -108,7 +113,16 @@ export async function runSeed(
   // Same pipeline as real uploads (EXIF stripped, 1600 px WebP). Each source photo is uploaded once per run
   // to seed/<name>.webp and shared by every listing that uses it.
   const toWebp = async (file: string) =>
-    sharp(await readFile(path.join(dir, "seed-photos", file))).rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+    // Demo photos get a light clean-up so they read well as small cards: 4:3 crop on the subject, a touch more
+    // colour and contrast, and sharpening after the resize.
+    sharp(await readFile(path.join(dir, "seed-photos", file)))
+      .rotate()
+      .resize(1200, 900, { fit: "cover", position: sharp.strategy.attention })
+      .modulate({ brightness: 1.03, saturation: 1.15 })
+      .linear(1.06, -6)
+      .sharpen({ sigma: 0.8 })
+      .webp({ quality: 84 })
+      .toBuffer();
   const uploaded = new Map<string, Promise<string>>();
   const photoUrl = (file: string) => {
     if (!uploaded.has(file)) uploaded.set(file, toWebp(file).then((buf) => storage.put(`seed/${file.replace(/\.\w+$/, "")}.webp`, buf, "image/webp")));
@@ -195,6 +209,9 @@ export async function runSeed(
         description: o.description, mission: o.mission ?? null, serviceArea: o.serviceArea ?? null, contactName: o.contactName, status: o.status,
         createdById: users[o.members.find((m) => m.role === "admin")!.user],
         ...(o.status === "approved" ? { verifiedAt: now, verifiedById: users.admin ?? null } : {}),
+        logoUrl: o.logo
+          ? await storage.put(`seed/${o.logo.replace(/\.\w+$/, "")}.webp`, await sharp(await readFile(path.join(dir, "seed-photos", o.logo))).resize(256, 256, { fit: "contain", background: "#ffffff" }).webp({ quality: 90 }).toBuffer(), "image/webp")
+          : null,
         members: { create: o.members.map((m) => ({ userId: users[m.user], role: m.role })) },
       },
     });

@@ -43,7 +43,11 @@ export function OrganizationsPage() {
       <div className="grid gap-3 md:grid-cols-2">
         {q.data?.map((o) => (
           <Link key={o.id} to={`/organizations/${o.id}`} className="flex gap-3 rounded-2xl bg-white p-4 ring-1 ring-stone-200 hover:ring-brand">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-light text-2xl font-bold text-brand-dark">{o.name.charAt(0)}</span>
+            {o.logoUrl ? (
+              <img src={o.logoUrl} alt={`${o.name} logo`} className="h-14 w-14 shrink-0 rounded-xl object-contain" loading="lazy" />
+            ) : (
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-light text-2xl font-bold text-brand-dark">{o.name.charAt(0)}</span>
+            )}
             <div className="min-w-0">
               <p className="font-bold">{o.name} {o.verified && <span className="ml-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">Verified</span>}</p>
               <p className="text-sm text-stone-600">{ORG_TYPE[o.type]} · {o.city}</p>
@@ -71,6 +75,7 @@ export function OrganizationPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <section className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+            {o.logoUrl && <img src={o.logoUrl} alt={`${o.name} logo`} className="h-20 w-20 rounded-2xl object-contain" />}
             <p className="text-sm font-semibold text-brand-dark">{ORG_TYPE[o.type]} · {o.city} {o.verified && "· ✔ Verified"}</p>
             <p className="text-stone-700">{o.description}</p>
             {o.mission && <p><strong>Mission:</strong> {o.mission}</p>}

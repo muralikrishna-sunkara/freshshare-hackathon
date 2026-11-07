@@ -1,6 +1,8 @@
 import type { NotificationType } from "@prisma/client";
 import { renderEmail, sendEmail } from "../lib/email.js";
 import { logger } from "../lib/logger.js";
+import { sendPush } from "../lib/push.js";
+import { blockedIds } from "./blocks.js";
 import { prisma } from "../lib/prisma.js";
 import { TEST_EMAIL_SUFFIX } from "./rules.js";
 
@@ -34,6 +36,8 @@ export async function notify(userId: string, n: NotifyInput) {
       data: { userId, type: n.type, title: n.title, body: n.body, link: n.link ?? null, listingId: n.listingId ?? null, claimId: n.claimId ?? null },
     });
     if (EMAIL_TYPES.has(n.type)) await maybeEmail(row.id, userId, n);
+    // T2.2: also as a push notification on every device the person enabled.
+    await sendPush(userId, { title: n.title, body: n.body, link: n.link, tag: n.claimId ?? n.listingId ?? n.type });
     return row;
   } catch (err) {
     logger.error({ err, type: n.type }, "notify failed");
@@ -74,7 +78,8 @@ export async function notifyNearby(l: { id: string; giverId: string; title: stri
     const { distanceM } = await import("../lib/geo.js");
     const subs = await prisma.alertSubscription.findMany({ where: { userId: { not: l.giverId } }, take: 500 });
     const hits = subs.filter((s) => (s.categories.length === 0 || s.categories.includes(l.category)) && distanceM(s.lat, s.lng, l.publicLat, l.publicLng) <= s.radiusM);
-    const userIds = [...new Set(hits.map((s) => s.userId))];
+    const blocked = await blockedIds(l.giverId);
+    const userIds = [...new Set(hits.map((s) => s.userId))].filter((u) => !blocked.has(u));
     if (!userIds.length) return 0;
     const recent = new Set(
       (

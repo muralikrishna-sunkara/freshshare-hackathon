@@ -54,7 +54,7 @@ test("footer pages, public profile and 404", async ({ page }) => {
     await page.getByRole("contentinfo").getByRole("link", { name: link }).click();
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
-  await page.goto("/map");
+  await page.goto("/map?view=map");
   await page.getByRole("link", { name: "Anna K." }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Anna K." })).toBeVisible();
   await expect(page.getByText("Reviews")).toBeVisible();

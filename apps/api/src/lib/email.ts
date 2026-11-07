@@ -71,11 +71,13 @@ export async function sendEmail(mail: Email): Promise<boolean> {
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /** A small branded email: headline, one paragraph, one button, and how to switch these emails off. */
-export function renderEmail(o: { title: string; body: string; link?: string | null; cta?: string }) {
+/** `transactional`: account emails (password reset) that are sent whatever the notification setting. */
+export function renderEmail(o: { title: string; body: string; link?: string | null; cta?: string; transactional?: string }) {
   const base = (env.APP_URL ?? "https://freshshare.de").replace(/\/$/, "");
   const url = o.link ? `${base}${o.link}` : base;
   const settings = `${base}/profile`;
-  const text = `${o.title}\n\n${o.body}\n\n${o.cta ?? "Open FreshShare"}: ${url}\n\nYou get this because email notifications are on. Turn them off in your profile: ${settings}\n`;
+  const footerText = o.transactional ?? `You get this because email notifications are on. Turn them off in your profile: ${settings}`;
+  const text = `${o.title}\n\n${o.body}\n\n${o.cta ?? "Open FreshShare"}: ${url}\n\n${footerText}\n`;
   const html = `<!doctype html><html><body style="margin:0;background:#f5f5f4;font-family:Arial,Helvetica,sans-serif;color:#1c1917">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden">
@@ -85,7 +87,7 @@ export function renderEmail(o: { title: string; body: string; link?: string | nu
 <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#44403c">${esc(o.body)}</p>
 <a href="${esc(url)}" style="display:inline-block;background:#2e5e4e;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px">${esc(o.cta ?? "Open FreshShare")}</a>
 </td></tr>
-<tr><td style="padding:0 24px 24px;font-size:12px;color:#78716c">You get this because email notifications are on. <a href="${esc(settings)}" style="color:#2e5e4e">Turn them off in your profile</a>.</td></tr>
+<tr><td style="padding:0 24px 24px;font-size:12px;color:#78716c">${o.transactional ? esc(o.transactional) : `You get this because email notifications are on. <a href="${esc(settings)}" style="color:#2e5e4e">Turn them off in your profile</a>.`}</td></tr>
 </table></td></tr></table></body></html>`;
   return { text, html };
 }

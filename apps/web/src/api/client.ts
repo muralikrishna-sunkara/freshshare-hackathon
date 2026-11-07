@@ -37,6 +37,8 @@ export interface Listing {
   lat?: number;
   lng?: number;
   handoverSpot?: string | null;
+  /** Only for the giver and the confirmed receiver. */
+  pickupInstructions?: string | null;
 }
 
 export class ApiError extends Error {
@@ -165,6 +167,22 @@ export const claimAction = (id: string, action: "confirm" | "collected" | "cance
   api<{ claim: Claim }>(`/claims/${id}/${action}`, { method: "POST" }).then((r) => r.claim);
 
 export const createListing = (form: FormData) => api<{ listing: Listing }>("/listings", { method: "POST", body: form }).then((r) => r.listing);
+/** K1: suggested fields from the first photo. The form fills them in for the giver to check. */
+export interface PhotoSuggestion {
+  title: string;
+  category: Category;
+  origin: Origin;
+  dietaryTags: DietaryTag[];
+  allergens: string[];
+}
+export const fetchAiStatus = () => api<{ photoAutofill: boolean }>("/ai/status");
+export const suggestFromPhoto = (photo: File) => {
+  const f = new FormData();
+  f.set("photo", photo);
+  return api<{ suggestion: PhotoSuggestion }>("/ai/photo-suggestions", { method: "POST", body: f }).then((r) => r.suggestion);
+};
+export const updateListing = (id: string, form: FormData) =>
+  api<{ listing: Listing }>(`/listings/${encodeURIComponent(id)}`, { method: "PATCH", body: form }).then((r) => r.listing);
 
 export const rateClaim = (id: string, stars: number, note?: string) =>
   api<{ claim: Claim }>(`/claims/${id}/ratings`, json({ stars, note })).then((r) => r.claim);
@@ -309,7 +327,7 @@ export interface BulkClaim {
   organization: { id: string; name: string }; myRole: OrgRole;
   items: {
     id: string; claimId: string; claimStatus: ClaimStatus; isCollected: boolean; collectedAt: string | null;
-    listing: { id: string; title: string; photoUrl: string; portions: number; pickupUntil: string; giver: { id: string; name: string }; distanceM: number; lat?: number; lng?: number; handoverSpot?: string | null };
+    listing: { id: string; title: string; photoUrl: string; portions: number; pickupUntil: string; giver: { id: string; name: string }; distanceM: number; lat?: number; lng?: number; handoverSpot?: string | null; pickupInstructions?: string | null };
   }[];
 }
 export const createBulkClaim = (orgId: string, b: { name: string; notes?: string; scheduledPickupDate: string; listingIds: string[] }) =>
@@ -408,3 +426,35 @@ export interface OrgImpact {
 }
 export const fetchUserImpact = (id: string) => api<UserImpact>(`/impact/users/${id}`);
 export const fetchOrgImpact = (id: string) => api<OrgImpact>(`/impact/organizations/${id}`);
+
+// T2.2 nearby alerts
+export interface AlertSettings { enabled: boolean; lat: number | null; lng: number | null; radiusM: number; categories: Category[] }
+export const fetchAlerts = () => api<{ alert: AlertSettings }>("/alerts").then((r) => r.alert);
+export const saveAlerts = (b: { enabled: boolean; radiusM?: number; categories?: Category[] }) =>
+  api<{ alert: AlertSettings }>("/alerts", { ...json(b), method: "PUT" }).then((r) => r.alert);
+
+// T2.4 recurring listings
+export interface Schedule {
+  id: string;
+  title: string;
+  category: Category;
+  portions: number;
+  photoUrl: string | null;
+  daysOfWeek: number[];
+  time: string;
+  pickupHours: number;
+  bestBeforeDays: number;
+  active: boolean;
+  lastPostedOn: string | null;
+  nextRun: string | null;
+}
+export const fetchSchedules = () => api<{ schedules: Schedule[] }>("/schedules").then((r) => r.schedules);
+export const createSchedule = (b: { fromListingId: string; daysOfWeek: number[]; time: string; pickupHours: number }) =>
+  api<{ schedule: Schedule }>("/schedules", json(b)).then((r) => r.schedule);
+export const updateSchedule = (id: string, b: Partial<Pick<Schedule, "active" | "daysOfWeek" | "time" | "pickupHours" | "portions">>) =>
+  api<{ schedule: Schedule }>(`/schedules/${id}`, { ...json(b), method: "PATCH" }).then((r) => r.schedule);
+export const deleteSchedule = (id: string) => fetch(`/api/schedules/${id}`, { method: "DELETE", credentials: "include" });
+
+// Password reset
+export const forgotPassword = (email: string) => api<{ ok: true; message: string }>("/auth/forgot", json({ email }));
+export const resetPassword = (token: string, password: string) => api<{ user: Me }>("/auth/reset", json({ token, password })).then((r) => r.user);

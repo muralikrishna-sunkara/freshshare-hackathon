@@ -150,7 +150,7 @@ describe("seed history (CLI / AWS seed)", () => {
     expect(users).toBeGreaterThan(40);
     expect(await prisma.listing.count({ where: { status: "collected" } })).toBeGreaterThan(70);
     expect(await prisma.fridge.count({ where: { status: "active" } })).toBe(seedFile.fridges.length + 6);
-    expect(await prisma.organization.count({ where: { status: "approved" } })).toBe(4);
+    expect(await prisma.organization.count({ where: { status: "approved" } })).toBe(6); // 3 from seed.json + 3 from history
     expect(await prisma.bulkClaim.count({ where: { status: "completed" } })).toBeGreaterThanOrEqual(8);
     expect(await prisma.earlyAccessSignup.count()).toBe(64);
     expect(await prisma.report.count({ where: { status: "open" } })).toBe(4);

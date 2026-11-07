@@ -4,6 +4,7 @@ import { ApiError, fetchListing } from "../api/client";
 import { ListingActions } from "../components/ListingActions";
 import { ListingCard } from "../components/ListingCard";
 import { Page } from "../components/Page";
+import { t } from "../i18n";
 import { useMe } from "../hooks/useMe";
 
 /** Shareable listing page (/listings/:id). Same privacy as the map: approximate area only. */
@@ -12,7 +13,7 @@ export function ListingPage() {
   const me = useMe();
   const q = useQuery({ queryKey: ["listing", id, me.data?.id], queryFn: () => fetchListing(id) });
   return (
-    <Page title="Listing">
+    <Page title={t("Listing")}>
       {q.isLoading && (
         <div className="space-y-3">
           <div className="aspect-[4/3] animate-pulse rounded-2xl bg-stone-200" />
@@ -22,9 +23,9 @@ export function ListingPage() {
       {q.isError && (
         <div role="alert" className="space-y-3 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
           <p className="font-semibold">
-            {q.error instanceof ApiError && q.error.status === 404 ? "This listing is gone. It may have been collected or removed." : "Couldn't load this listing."}
+            {q.error instanceof ApiError && q.error.status === 404 ? t("This listing is gone. It may have been collected or removed.") : t("Couldn't load this listing.")}
           </p>
-          <Link to="/map" className="inline-block rounded-full bg-brand-dark px-5 py-2.5 font-bold text-white">See food nearby</Link>
+          <Link to="/map" className="inline-block rounded-full bg-brand-dark px-5 py-2.5 font-bold text-white">{t("See food nearby")}</Link>
         </div>
       )}
       {q.data && (
@@ -32,7 +33,7 @@ export function ListingPage() {
           <ListingCard listing={q.data} />
           <ListingActions listing={q.data} />
           <div className="border-t border-stone-200 p-4 text-center">
-            <Link to={`/map?listing=${q.data.id}`} className="text-sm font-semibold text-brand-dark underline">Show on the map</Link>
+            <Link to={`/map?listing=${q.data.id}&view=map`} className="text-sm font-semibold text-brand-dark underline">{t("Show on the map")}</Link>
           </div>
         </div>
       )}

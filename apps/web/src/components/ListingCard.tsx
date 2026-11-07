@@ -2,6 +2,9 @@ import type { Listing } from "../api/client";
 import { useState } from "react";
 import { allergenLabel, CATEGORY, DIETARY, formatDay, formatDistance, formatTime, ORIGIN, timeAgo, timeLeft } from "../lib/format";
 import { GiverRow } from "./GiverRow";
+import { FridgeIcon } from "./FridgeIcon";
+import { t, tn } from "../i18n";
+import { FoodPhoto } from "./FoodPhoto";
 
 const chip = "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold";
 
@@ -16,10 +19,10 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
       onClick={onClick}
     >
       <div className={compact ? "h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-stone-100" : "aspect-[4/3] w-full overflow-hidden bg-stone-100"}>
-        <img src={compact ? photos[0] : photos[shown] ?? photos[0]} alt={l.title} loading="lazy" className="h-full w-full object-cover" />
+        <FoodPhoto key={compact ? photos[0] : photos[shown] ?? photos[0]} src={compact ? photos[0] : photos[shown] ?? photos[0]} alt={l.title} category={l.category} />
       </div>
       {!compact && photos.length > 1 && (
-        <div className="flex gap-2 px-4 pt-3" aria-label="More photos">
+        <div className="flex gap-2 px-4 pt-3" aria-label={t("More photos")}>
           {photos.map((src, i) => (
             <button
               key={src}
@@ -28,7 +31,7 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
                 e.stopPropagation();
                 setShown(i);
               }}
-              aria-label={`Photo ${i + 1} of ${photos.length}`}
+              aria-label={t("Photo {i} of {n}", { i: i + 1, n: photos.length })}
               aria-pressed={shown === i}
               className={`h-14 w-14 overflow-hidden rounded-lg ring-2 ${shown === i ? "ring-brand" : "ring-transparent"}`}
             >
@@ -39,7 +42,7 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
       )}
       <div className={compact ? "min-w-0 flex-1 py-0.5" : "space-y-3 p-4"}>
         <div className="flex flex-wrap gap-1.5">
-          <span className={`${chip} bg-accent-light text-[#7a560f]`}>Best before {formatDay(l.bestBefore)}</span>
+          <span className={`${chip} bg-accent-light text-[#7a560f]`}>{t("Best before {date}", { date: formatDay(l.bestBefore) })}</span>
           <span className={`${chip} bg-brand-light text-brand-dark`}>{ORIGIN[l.origin]}</span>
           {!compact && (
             <span className={`${chip} bg-stone-100 text-stone-700`}>
@@ -50,32 +53,43 @@ export function ListingCard({ listing: l, compact = false, onClick }: { listing:
         <h2 className={`${compact ? "mt-1 truncate text-base" : "text-xl"} font-bold leading-tight`}>{l.title}</h2>
         {l.dietaryTags?.length > 0 && (
           <div className={`flex flex-wrap gap-1 ${compact ? "mt-1" : ""}`}>
-            {l.dietaryTags.map((t) => (
-              <span key={t} className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-700">{DIETARY[t]}</span>
+            {l.dietaryTags.map((tag) => (
+              <span key={tag} className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-700">{DIETARY[tag]}</span>
             ))}
           </div>
         )}
-        {!compact && l.description && <p className="text-sm text-stone-700">{l.description}</p>}
+        {!compact && l.description && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-stone-500">{t("Description")}</p>
+            <p className="whitespace-pre-line text-sm text-stone-700">{l.description}</p>
+          </div>
+        )}
+        {!compact && l.pickupInstructions && (
+          <div className="rounded-xl bg-brand-light p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-dark">{t("Pickup instructions")}</p>
+            <p className="whitespace-pre-line text-sm text-stone-800">{l.pickupInstructions}</p>
+          </div>
+        )}
         {!compact && l.allergens.length > 0 && (
-          <p className="text-sm text-stone-600">Contains: {l.allergens.map(allergenLabel).join(", ")}</p>
+          <p className="text-sm text-stone-600">{t("Contains: {list}", { list: l.allergens.map(allergenLabel).join(", ") })}</p>
         )}
         <div className={compact ? "mt-1" : ""}>
           <GiverRow giver={l.giver} />
         </div>
         <p className={`text-sm text-stone-600 ${compact ? "mt-1" : ""}`}>
-          {l.distanceM !== undefined && <>{formatDistance(l.distanceM)} away · </>}
-          {compact ? timeLeft(l.pickupUntil) : <>posted {timeAgo(l.createdAt)}</>}
+          {l.distanceM !== undefined && <>{t("{d} away", { d: formatDistance(l.distanceM) })} · </>}
+          {compact ? timeLeft(l.pickupUntil) : <>{t("posted {ago}", { ago: timeAgo(l.createdAt) })}</>}
           {!compact && (
             <>
               {" "}
-              · pickup {formatTime(l.pickupFrom)}–{formatTime(l.pickupUntil)} · {l.portions} {l.portions === 1 ? "portion" : "portions"}
+              · {t("pickup {from}–{until}", { from: formatTime(l.pickupFrom), until: formatTime(l.pickupUntil) })} · {tn("{n} portion", "{n} portions", l.portions)}
             </>
           )}
         </p>
-        {l.fridge?.name && <p className="text-sm font-semibold text-brand-dark">🧊 At {l.fridge.name}</p>}
-        {!compact && !l.fridge && l.areaLabel && <p className="text-sm text-stone-600">📍 Around {l.areaLabel} (exact address after confirmation)</p>}
-        {!compact && l.weightKg && <p className="text-sm text-stone-600">About {l.weightKg} kg</p>}
-        {!compact && l.hasHandoverSpot && <p className="text-sm text-brand-dark">Public handover spot offered</p>}
+        {l.fridge?.name && <p className="flex items-center gap-1 text-sm font-semibold text-brand-dark"><FridgeIcon className="h-4 w-4" /> {t("At {place}", { place: l.fridge.name })}</p>}
+        {!compact && !l.fridge && l.areaLabel && <p className="text-sm text-stone-600">📍 {t("Around {area} (exact address after confirmation)", { area: l.areaLabel })}</p>}
+        {!compact && l.weightKg && <p className="text-sm text-stone-600">{t("About {kg} kg", { kg: l.weightKg })}</p>}
+        {!compact && l.hasHandoverSpot && <p className="text-sm text-brand-dark">{t("Public handover spot offered")}</p>}
       </div>
     </article>
   );

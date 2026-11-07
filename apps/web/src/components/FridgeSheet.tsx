@@ -4,11 +4,14 @@ import { checkInFridge, type Fridge, type FridgeState } from "../api/client";
 import { useMe } from "../hooks/useMe";
 import { formatDistance, timeAgo } from "../lib/format";
 import { ErrorNote } from "./Page";
+import { Directions } from "./Directions";
+import { t } from "../i18n";
+import { FridgeIcon } from "./FridgeIcon";
 
 const STATE: Record<FridgeState, { label: string; tone: string; emoji: string }> = {
-  stocked: { label: "Stocked", tone: "bg-brand-light text-brand-dark", emoji: "✅" },
-  empty: { label: "Empty", tone: "bg-stone-100 text-stone-700", emoji: "🫙" },
-  needs_cleaning: { label: "Needs cleaning", tone: "bg-accent-light text-[#7a560f]", emoji: "🧽" },
+  stocked: { label: t("Stocked"), tone: "bg-brand-light text-brand-dark", emoji: "✅" },
+  empty: { label: t("Empty"), tone: "bg-stone-100 text-stone-700", emoji: "🫙" },
+  needs_cleaning: { label: t("Needs cleaning"), tone: "bg-accent-light text-[#7a560f]", emoji: "🧽" },
 };
 
 export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
@@ -26,18 +29,19 @@ export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
         </div>
       )}
       <div className="space-y-2 px-4">
-        <span className="inline-flex rounded-full bg-brand-light px-2.5 py-1 text-xs font-semibold text-brand-dark">🧊 Community fridge</span>
+        <span className="inline-flex rounded-full bg-brand-light px-2.5 py-1 text-xs font-semibold text-brand-dark"><FridgeIcon className="mr-1 h-3.5 w-3.5" />{t("Community fridge")}</span>
         <h2 className="text-xl font-bold">{f.name}</h2>
-        <p className="text-sm text-stone-600">{f.address} · {formatDistance(f.distanceM)} away</p>
-        <p className="text-sm text-stone-600">Open: {f.openingHours}</p>
+        <p className="text-sm text-stone-600">{f.address} · {t("{d} away", { d: formatDistance(f.distanceM) })}</p>
+        <p className="text-sm text-stone-600">{t("Open:")} {f.openingHours}</p>
+        <Directions lat={f.lat} lng={f.lng} />
         {f.lastCheckIn ? (
           <p className={`rounded-xl p-3 text-sm font-semibold ${STATE[f.lastCheckIn.state].tone}`}>
-            Last checked {timeAgo(f.lastCheckIn.at)}: {STATE[f.lastCheckIn.state].label.toLowerCase()}
+            {t("Last checked {when}: {state}", { when: timeAgo(f.lastCheckIn.at), state: STATE[f.lastCheckIn.state].label.toLowerCase() })}
           </p>
         ) : (
-          <p className="rounded-xl bg-stone-100 p-3 text-sm">No check-ins yet.</p>
+          <p className="rounded-xl bg-stone-100 p-3 text-sm">{t("No check-ins yet.")}</p>
         )}
-        <h3 className="pt-2 text-sm font-bold text-stone-700">I just checked it</h3>
+        <h3 className="pt-2 text-sm font-bold text-stone-700">{t("I just checked it")}</h3>
         {me.data ? (
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(STATE) as FridgeState[]).map((s) => (
@@ -53,10 +57,10 @@ export function FridgeSheet({ fridge: f }: { fridge: Fridge }) {
             ))}
           </div>
         ) : (
-          <Link to="/signin" className="block text-sm font-semibold text-brand-dark underline">Sign in to check in</Link>
+          <Link to="/signin" className="block text-sm font-semibold text-brand-dark underline">{t("Sign in to check in")}</Link>
         )}
-        {m.isSuccess && <p className="text-sm text-brand-dark">Thanks! Neighbours will see this.</p>}
-        <Link to={`/fridges/${f.id}`} className="block pt-2 text-sm font-semibold text-brand-dark underline">Open fridge page: history, what's inside, check in</Link>
+        {m.isSuccess && <p className="text-sm text-brand-dark">{t("Thanks! Neighbours will see this.")}</p>}
+        <Link to={`/fridges/${f.id}`} className="block pt-2 text-sm font-semibold text-brand-dark underline">{t("Open fridge page: history, what's inside, check in")}</Link>
         <ErrorNote error={m.error} />
       </div>
     </div>

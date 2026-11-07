@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead, type AppNotification, type NotificationType } from "../api/client";
 import { ErrorNote, Page } from "../components/Page";
 import { Empty, Skeleton } from "../components/States";
+import { t } from "../i18n";
 import { timeAgo } from "../lib/format";
 
 const ICON: Record<NotificationType, string> = {
@@ -13,7 +14,7 @@ const ICON: Record<NotificationType, string> = {
   listing_expiring_soon: "⏰",
   new_listing_nearby: "📍",
   waitlist_offer: "🎟️",
-  fridge_approved: "🧊",
+  fridge_approved: "✅",
   org_approved: "🏛️",
 };
 
@@ -32,21 +33,21 @@ export function NotificationsPage() {
   };
   const unread = q.data?.unreadCount ?? 0;
   return (
-    <Page title="Notifications">
+    <Page title={t("Notifications")}>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-stone-600">{unread ? `${unread} unread` : "You're all caught up."}</p>
+        <p className="text-sm text-stone-600">{unread ? t("{n} unread", { n: unread }) : t("You're all caught up.")}</p>
         <button
           className="min-h-[40px] rounded-full px-4 text-sm font-semibold ring-1 ring-stone-300 disabled:opacity-50"
           disabled={!unread || all.isPending}
           onClick={() => all.mutate()}
         >
-          Mark all as read
+          {t("Mark all as read")}
         </button>
       </div>
       <ErrorNote error={q.error ?? all.error} />
       {q.isLoading && <Skeleton rows={4} />}
       {q.data && q.data.notifications.length === 0 && (
-        <Empty title="No notifications yet">You'll hear here when someone reserves your food, confirms your pickup or sends you a message.</Empty>
+        <Empty title={t("No notifications yet")}>{t("You'll hear here when someone reserves your food, confirms your pickup or sends you a message.")}</Empty>
       )}
       {q.data && q.data.notifications.length > 0 && (
         <ul className="space-y-2">
@@ -65,7 +66,7 @@ export function NotificationsPage() {
                   </span>
                   <span className="block text-sm text-stone-600">{n.body}</span>
                 </span>
-                {!n.read && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-label="Unread" />}
+                {!n.read && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-label={t("Unread")} />}
               </button>
             </li>
           ))}

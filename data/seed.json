@@ -221,16 +221,19 @@
     {
       "key": "dal",
       "giver": "priya",
-      "title": "Lentil soup, 2 portions",
+      "title": "Overnight oats with fruit, 2 bowls",
       "category": "leftovers",
       "origin": "homemade",
-      "allergens": [],
+      "allergens": [
+        "gluten",
+        "milk"
+      ],
       "bestBeforeOffsetMin": 1200,
       "createdOffsetMin": -60,
       "pickupFromOffsetMin": 30,
       "pickupUntilOffsetMin": 300,
       "portions": 2,
-      "photo": "soup.jpg",
+      "photo": "granola.jpg",
       "handoverSpot": null,
       "status": "available",
       "_test": "Giver not verified; pickup starts in 30 min"
@@ -551,7 +554,8 @@
           "user": "omar",
           "role": "viewer"
         }
-      ]
+      ],
+      "logo": "org-food-bank.png"
     },
     {
       "key": "pendingngo",
@@ -570,7 +574,51 @@
           "user": "sara",
           "role": "admin"
         }
-      ]
+      ],
+      "logo": "org-student-club.png"
+    },
+    {
+      "key": "kitchen",
+      "name": "Demo Community Kitchen Bruck",
+      "type": "community_center",
+      "email": "kitchen@demo.freshshare.de",
+      "address": "Placeholder street 12, Erlangen-Bruck",
+      "city": "Erlangen",
+      "lat": 49.5738,
+      "lng": 11.004999999999999,
+      "description": "Fictional neighbourhood kitchen that cooks a free Friday lunch from rescued food.",
+      "mission": "Nobody in Bruck eats alone on Fridays.",
+      "serviceArea": "Erlangen-Bruck",
+      "contactName": "Priya S.",
+      "status": "approved",
+      "members": [
+        {
+          "user": "priya",
+          "role": "admin"
+        }
+      ],
+      "logo": "org-community-kitchen.png"
+    },
+    {
+      "key": "pantry",
+      "name": "Demo Neighbourhood Pantry",
+      "type": "charity",
+      "email": "pantry@demo.freshshare.de",
+      "address": "Placeholder lane 3, Erlangen",
+      "city": "Erlangen",
+      "lat": 49.5938,
+      "lng": 11.020999999999999,
+      "description": "Fictional volunteer pantry that shares dry goods and tins twice a week.",
+      "serviceArea": "Erlangen Innenstadt",
+      "contactName": "Tom B.",
+      "status": "approved",
+      "members": [
+        {
+          "user": "tom",
+          "role": "admin"
+        }
+      ],
+      "logo": "org-pantry.png"
     }
   ],
   "pendingFridges": [

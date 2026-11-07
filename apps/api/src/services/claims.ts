@@ -8,6 +8,7 @@ import { recomputeBulk } from "./orgs.js";
 import { randomInt } from "node:crypto";
 import { HOMEMADE_MAX_HOURS } from "./rules.js";
 import { isBlockedBetween } from "./blocks.js";
+import { postDueSchedules } from "./schedules.js";
 import { heldForOther, offerToNext, waitlistHousekeeping } from "./waitlist.js";
 
 export const HOLD_MINUTES = 30;
@@ -35,7 +36,7 @@ export function claimView(c: ClaimFull, role: "giver" | "receiver") {
     role,
     listing: {
       ...publicListing(c.listing),
-      ...(revealed ? { lat: c.listing.lat, lng: c.listing.lng, handoverSpot: c.listing.handoverSpot } : {}),
+      ...(revealed ? { lat: c.listing.lat, lng: c.listing.lng, handoverSpot: c.listing.handoverSpot, pickupInstructions: c.listing.pickupInstructions } : {}),
     },
     receiver: giverView(c.receiver),
     // T2.6: the receiver shows this (as a QR code or 6 digits) and the giver enters or scans it to complete the pickup.
@@ -197,8 +198,9 @@ export async function housekeeping(now = new Date()) {
     data: { status: "expired" },
   });
   const passedOn = await waitlistHousekeeping(now);
-  if (lapsed.length || expired.count || passedOn) logger.info({ lapsed: lapsed.length, expired: expired.count, passedOn }, "housekeeping");
-  return { lapsed: lapsed.length, expired: expired.count, passedOn };
+  const recurring = await postDueSchedules(now);
+  if (lapsed.length || expired.count || passedOn || recurring) logger.info({ lapsed: lapsed.length, expired: expired.count, passedOn, recurring }, "housekeeping");
+  return { lapsed: lapsed.length, expired: expired.count, passedOn, recurring };
 }
 
 /** 6 random digits for the handover check (T2.6). */

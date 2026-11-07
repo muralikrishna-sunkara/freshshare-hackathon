@@ -18,3 +18,7 @@ export const TEST_EMAIL_SUFFIX = "@example.test";
 
 export const DIETARY_TAGS = ["vegetarian", "vegan", "gluten_free", "lactose_free", "halal", "kosher", "nut_free"] as const;
 export const REPORT_REASONS = ["unsafe_food", "prohibited_item", "spam", "no_show", "harassment", "other"] as const;
+export const CATEGORIES = ["leftovers", "fruit_veg", "bread", "packaged", "dairy", "other"] as const;
+export const ORIGINS = ["homemade", "packaged", "fresh_produce"] as const;
+/** Allergen chips on the share form (a subset of the EU 14). */
+export const ALLERGENS = ["gluten", "milk", "eggs", "nuts", "peanuts", "soy", "sesame", "celery", "mustard", "fish"] as const;

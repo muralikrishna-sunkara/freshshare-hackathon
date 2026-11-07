@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const schema = z.object({
   NODE_ENV: z.string().default("development"),
+  /** Sign-in/sign-up attempts per IP per 15 minutes. Raise it locally for repeated e2e runs (they all come from one IP). */
+  AUTH_RATE_LIMIT: z.coerce.number().int().min(1).default(30),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1).default("dev-only-change-me"),
@@ -20,6 +22,17 @@ const schema = z.object({
   // Photon reverse geocoding for the public "91054 Altstadt" area label. "off" in tests.
   GEOCODER: z.enum(["photon", "off"]).default(process.env.NODE_ENV === "test" ? "off" : "photon"),
   PHOTON_URL: z.string().default("https://photon.komoot.io"),
+  // Web push (T2.2): a P-256 private key as PEM (Terraform tls_private_key on AWS, `npm run vapid` locally).
+  // Unset = push is off and the settings page says so. "memory" (tests) records pushes instead of sending them.
+  VAPID_PRIVATE_KEY_PEM: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:notifications@freshshare.de"),
+  PUSH_TRANSPORT: z.enum(["webpush", "memory"]).default(process.env.NODE_ENV === "test" ? "memory" : "webpush"),
+  // K1 photo autofill: Anthropic API key and model. Unset or empty = the "Fill from photo" button is hidden.
+  AI_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v?.trim() ? v.trim() : undefined)),
+  AI_MODEL: z.string().default("claude-opus-5-5"),
 });
 
 export type Env = z.infer<typeof schema>;
