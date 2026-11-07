@@ -29,6 +29,7 @@ export default defineConfig({
     { name: "trust", testMatch: "trust.spec.ts", dependencies: ["desktop"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "alerts", testMatch: "alerts-recurring.spec.ts", dependencies: ["desktop"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     // Read-only browse check on a phone-sized browser; runs after the demo path.
+    { name: "edit", testMatch: "edit-browse.spec.ts", dependencies: ["desktop"], use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "password", testMatch: "password.spec.ts", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "mobile", testMatch: "mobile-browse.spec.ts", dependencies: ["desktop"], use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],

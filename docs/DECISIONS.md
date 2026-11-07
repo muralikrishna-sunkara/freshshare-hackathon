@@ -67,3 +67,8 @@
 - **Fridge icon**: a drawn SVG refrigerator (`FridgeIcon`) replaces the 🧊/box emoji, which read as a package.
 - **Password**: Show/Hide toggle on every password field. Forgot password always answers the same (no account probing) and emails a single-use link valid 1 hour; only a SHA-256 hash of the token is stored. Reset signs the person in and refuses suspended accounts.
 - **Photos**: seed photos are smart-cropped (sharp attention strategy), slightly brightened and sharpened; items whose photo didn't match were changed or dropped from the history rotation. A photo that fails to load falls back to a coloured category tile with its emoji and label.
+
+## Listing edits, list-first browsing, K1 photo autofill (feedback from Krish)
+- **Edit listing**: `PATCH /api/listings/:id` for the giver while the food is still available. Once someone has reserved it, the giver must decline or finish that pickup first, so the receiver never gets food that differs from what they reserved. The place stays fixed; Post again moves it.
+- **List first, any distance**: Find food opens in the list view, with no distance filter (up to 50 km, nearest first). Tapping a selected km chip clears it. `?view=map` and `?km=` keep views shareable.
+- **K1 photo autofill**: Claude (`claude-opus-5-5` at low effort, structured outputs validated with zod, server-side refusal fallback) suggests the title, category, label, dietary tags and allergens. The photo is resized and re-encoded first so EXIF/GPS never leaves our servers; nothing is stored. Raw meat/fish and non-food photos are refused. The key sits in a hand-made Secrets Manager secret (`freshshare-dev/ai`), so it never appears in Terraform state or CI logs.

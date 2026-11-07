@@ -20,6 +20,7 @@ import { admin } from "./routes/admin.js";
 import { bulkClaims, organizations } from "./routes/organizations.js";
 import { users } from "./routes/users.js";
 import { alerts, push } from "./routes/alerts.js";
+import { ai } from "./routes/ai.js";
 import { schedules } from "./routes/schedules.js";
 
 export function createApp() {
@@ -54,6 +55,7 @@ export function createApp() {
   api.use("/alerts", alerts);
   api.use("/push", push);
   api.use("/schedules", schedules);
+  api.use("/ai", ai);
   api.use(notFound);
   app.use("/api", api);
 

@@ -9,6 +9,7 @@ import { ListingCard } from "../components/ListingCard";
 import { RateForm } from "../components/RateForm";
 import { ErrorNote, Page, primaryBtn } from "../components/Page";
 import { EnterPickupCode, ShowPickupCode } from "../components/PickupCode";
+import { Directions } from "../components/Directions";
 import { formatTime } from "../lib/format";
 
 const exactIcon = L.divIcon({
@@ -87,14 +88,7 @@ export function ClaimPage() {
                   <Marker position={[l.lat, l.lng]} icon={exactIcon} />
                 </MapContainer>
               </div>
-              <a
-                className="inline-block text-sm font-semibold text-brand-dark underline"
-                href={`https://www.openstreetmap.org/?mlat=${l.lat}&mlon=${l.lng}#map=18/${l.lat}/${l.lng}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open in maps
-              </a>
+              <Directions lat={l.lat} lng={l.lng} />
               <p className="text-sm text-stone-600">Pickup window {formatTime(l.pickupFrom)}–{formatTime(l.pickupUntil)}</p>
             </div>
           ) : (

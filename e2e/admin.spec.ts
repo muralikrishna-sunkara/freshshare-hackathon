@@ -53,16 +53,20 @@ test("credits page is linked from the footer", async ({ page }) => {
 
 test("an empty map offers a way forward", async ({ page }) => {
   await page.goto("/map?category=dairy&diet=halal");
-  await expect(page.getByText(/Nothing matching your filters within/).first()).toBeVisible();
+  await expect(page.getByText(/Nothing matching your filters nearby/).first()).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).first().click();
   await expect(page).not.toHaveURL(/diet=/);
   await expect(page.getByText(/Nothing matching your filters/)).toHaveCount(0);
 });
 
 test("Find food switches between the map and the browse grid", async ({ page }) => {
+  // The list is the default; the map is one tap away and back.
   await page.goto("/map");
+  await expect(page.getByRole("heading", { name: "Browse food" })).toBeVisible();
+  await page.getByRole("button", { name: "📍 Map view" }).click();
+  await expect(page).toHaveURL(/view=map/);
   await page.getByRole("tab", { name: /List/ }).click();
-  await expect(page).toHaveURL(/view=list/);
+  await expect(page).not.toHaveURL(/view=/);
   await expect(page.getByRole("heading", { name: "Browse food" })).toBeVisible();
   const card = page.getByRole("article").first();
   await expect(card.getByText(/Best before/)).toBeVisible();

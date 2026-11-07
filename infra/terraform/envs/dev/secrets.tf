@@ -27,3 +27,15 @@ resource "aws_secretsmanager_secret_version" "app" {
     VAPID_PRIVATE_KEY_PEM = tls_private_key.vapid.private_key_pem_pkcs8
   })
 }
+
+# Photo autofill (K1): the Anthropic API key lives in its own secret, created by hand
+# (aws secretsmanager create-secret --name freshshare-dev/ai --secret-string '{"AI_API_KEY":"sk-ant-..."}').
+# Terraform only reads its ARN, so the key never sits in Terraform state or CI logs.
+data "aws_secretsmanager_secret" "ai" {
+  count = var.photo_autofill_secret_name != "" ? 1 : 0
+  name  = var.photo_autofill_secret_name
+}
+
+locals {
+  ai_secret_arns = [for s in data.aws_secretsmanager_secret.ai : s.arn]
+}

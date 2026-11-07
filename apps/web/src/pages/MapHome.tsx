@@ -20,6 +20,8 @@ import { AddressSearch } from "../components/AddressSearch";
 import { FridgeIcon } from "../components/FridgeIcon";
 
 const RADII = [1000, 2000, 5000, 10000] as const;
+/** "Any distance": no km chip selected. The API caps this at 50 km and the list is nearest first. */
+const ANY_RADIUS = 50000;
 const chipBase = "shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition min-h-[40px]";
 const chipOn = "bg-brand-dark text-white";
 const chipOff = "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50";
@@ -38,8 +40,10 @@ export function MapHome() {
   const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
   const [params, setParams] = useSearchParams();
   // Filters live in the URL so a filtered view can be shared or bookmarked.
+  // No ?km means any distance; tapping the selected km chip again clears it.
   const radiusParam = Number(params.get("km")) * 1000;
-  const radius: number = (RADII as readonly number[]).includes(radiusParam) ? radiusParam : 2000;
+  const kmFilter: number | null = (RADII as readonly number[]).includes(radiusParam) ? radiusParam : null;
+  const radius = kmFilter ?? ANY_RADIUS;
   const category = (params.get("category") as Category | null) ?? undefined;
   const diet = (params.get("diet") as DietaryTag | null) ?? undefined;
   const showFridges = params.get("fridges") !== "0";
@@ -58,13 +62,14 @@ export function MapHome() {
       { replace: true },
     );
   const setArea = (c: { lat: number; lng: number } | null) => setFilter("at", c ? `${c.lat.toFixed(5)},${c.lng.toFixed(5)}` : undefined);
-  const setRadius = (r: number) => setFilter("km", r === 2000 ? undefined : String(r / 1000));
+  const setRadius = (r: number | null) => setFilter("km", r === null ? undefined : String(r / 1000));
   const setCategory = (c: Category | undefined) => setFilter("category", c);
   const setDiet = (d: DietaryTag | undefined) => setFilter("diet", d);
   const setShowFridges = (f: (v: boolean) => boolean) => setFilter("fridges", f(showFridges) ? undefined : "0");
   // Map or list view, and the list's sort order, are in the URL too (?view=list&sort=soonest).
-  const view: "map" | "list" = params.get("view") === "list" ? "list" : "map";
-  const setView = (v: "map" | "list") => setFilter("view", v === "list" ? "list" : undefined);
+  // The list is the default; ?view=map opens the map.
+  const view: "map" | "list" = params.get("view") === "map" ? "map" : "list";
+  const setView = (v: "map" | "list") => setFilter("view", v === "map" ? "map" : undefined);
   const sortParam = params.get("sort");
   const sort: SortKey = sortParam === "soonest" || sortParam === "newest" ? sortParam : "nearest";
   const focusId = params.get("listing");
@@ -112,20 +117,21 @@ export function MapHome() {
     q && `“${q}”`,
     category && CATEGORY[category].label,
     diet && DIETARY[diet],
-    formatDistance(radius),
+    kmFilter && formatDistance(kmFilter),
     sort !== "nearest" && SORTS[sort].label.toLowerCase(),
   ].filter(Boolean).join(" · ");
   const searchQuery = (() => {
     const n = new URLSearchParams(params);
     n.delete("listing");
-    n.set("view", "list");
+    n.delete("view");
     return n.toString();
   })();
   const fridges = fridgesQ.data ?? [];
-  const radiusLabel = formatDistance(radius);
+  const radiusLabel = kmFilter ? formatDistance(kmFilter) : null;
+  const withinLabel = radiusLabel ? `within ${radiusLabel}` : "nearby, nearest first";
   const countLabel = listingsQ.isLoading
     ? "Finding food nearby…"
-    : `${listings.length} ${listings.length === 1 ? "listing" : "listings"} within ${radiusLabel}`;
+    : `${listings.length} ${listings.length === 1 ? "listing" : "listings"} ${withinLabel}`;
 
   const impactBanner = (
     <p className="rounded-xl bg-brand-light px-3 py-2 text-sm text-brand-dark" aria-live="polite">
@@ -141,8 +147,11 @@ export function MapHome() {
 
   const renderFilters = (wrap: boolean) => (
     <div className={wrap ? "flex flex-wrap gap-2" : "-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5"}>
+      <button onClick={() => setRadius(null)} className={`${chipBase} ${kmFilter === null ? chipOn : chipOff}`} aria-pressed={kmFilter === null}>
+        Any distance
+      </button>
       {RADII.map((r) => (
-        <button key={r} onClick={() => setRadius(r)} className={`${chipBase} ${radius === r ? chipOn : chipOff}`} aria-pressed={radius === r}>
+        <button key={r} onClick={() => setRadius(kmFilter === r ? null : r)} className={`${chipBase} ${kmFilter === r ? chipOn : chipOff}`} aria-pressed={kmFilter === r}>
           {formatDistance(r)}
         </button>
       ))}
@@ -268,12 +277,12 @@ export function MapHome() {
     </div>
   );
 
-  const nextRadius = RADII.find((r) => r > radius);
+  const nextRadius = kmFilter === null ? undefined : RADII.find((r) => r > kmFilter);
   const filtered = !!category || !!diet;
   const emptyState = !listingsQ.isLoading && !listingsQ.isError && listings.length === 0 && (
     <div className="space-y-3 rounded-2xl bg-white p-4 text-center shadow-lg ring-1 ring-stone-200">
       <div>
-        <p className="font-semibold">Nothing {filtered ? "matching your filters " : ""}within {radiusLabel} right now.</p>
+        <p className="font-semibold">Nothing {filtered ? "matching your filters " : ""}{withinLabel === "nearby, nearest first" ? "nearby" : withinLabel} right now.</p>
         <p className="text-sm text-stone-600">
           {fridges.length > 0
             ? `There ${fridges.length === 1 ? "is 1 community fridge" : `are ${fridges.length} community fridges`} nearby. They are on the map.`
@@ -286,9 +295,9 @@ export function MapHome() {
             Clear filters
           </button>
         )}
-        {nextRadius && (
-          <button className="min-h-[40px] rounded-full bg-brand-dark px-4 font-bold text-white" onClick={() => setRadius(nextRadius)}>
-            Search {formatDistance(nextRadius)}
+        {kmFilter !== null && (
+          <button className="min-h-[40px] rounded-full bg-brand-dark px-4 font-bold text-white" onClick={() => setRadius(nextRadius ?? null)}>
+            {nextRadius ? `Search ${formatDistance(nextRadius)}` : "Any distance"}
           </button>
         )}
         <Link to="/share" className="min-h-[40px] rounded-full bg-accent px-4 py-2 font-bold text-white">Share food</Link>
@@ -308,7 +317,7 @@ export function MapHome() {
   const map = (
     <ListingMap
       centre={loc}
-      radius={radius}
+      radius={kmFilter ?? 2000}
       listings={listings}
       fridges={showFridges ? fridges : []}
       onSelect={openListing}
@@ -334,7 +343,7 @@ export function MapHome() {
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">Browse food</h1>
-              <p className="text-stone-600">Free food shared by your neighbours within {radiusLabel}{loc.source === "demo" ? " of the Erlangen demo area" : ""}.</p>
+              <p className="text-stone-600">Free food shared by your neighbours {radiusLabel ? `within ${radiusLabel}` : "near you, nearest first"}{loc.source === "demo" ? " of the Erlangen demo area" : ""}.</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setView("map")} className="min-h-[44px] rounded-xl bg-white px-4 font-semibold text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50">📍 Map view</button>
@@ -388,7 +397,7 @@ export function MapHome() {
                   {saved.items.some((s) => s.query === searchQuery) ? "✓ Saved" : "🔖 Save"}
                 </button>
               </div>
-              <p className="text-sm text-stone-600">{listingsQ.isLoading ? "Finding food nearby…" : `${sorted.length} ${sorted.length === 1 ? "listing" : "listings"} found within ${radiusLabel}`}</p>
+              <p className="text-sm text-stone-600">{listingsQ.isLoading ? "Finding food nearby…" : `${sorted.length} ${sorted.length === 1 ? "listing" : "listings"} found ${withinLabel}`}</p>
               {errorNote}
               {emptyState}
               {browseGrid}

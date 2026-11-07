@@ -17,6 +17,9 @@ mock_provider "aws" {
   mock_data "aws_ssm_parameter" {
     defaults = { value = "ami-0123456789abcdef0" }
   }
+  mock_data "aws_secretsmanager_secret" {
+    defaults = { arn = "arn:aws:secretsmanager:eu-central-1:123456789012:secret:freshshare-dev/ai-GhIjKl" }
+  }
   mock_resource "aws_secretsmanager_secret" {
     defaults = { arn = "arn:aws:secretsmanager:eu-central-1:123456789012:secret:freshshare-dev/app-AbCdEf" }
   }
@@ -132,6 +135,26 @@ run "real_images_and_byo_certificate" {
   assert {
     condition     = output.app_url == "https://app.dev.freshshare.food"
     error_message = "app_url should use the domain over HTTPS"
+  }
+
+  assert {
+    condition     = contains([for x in jsondecode(module.api.container_definitions)[0].secrets : x.valueFrom if x.name == "AI_API_KEY"], "arn:aws:secretsmanager:eu-central-1:123456789012:secret:freshshare-dev/ai-GhIjKl:AI_API_KEY::")
+    error_message = "the api reads AI_API_KEY from the hand-made photo autofill secret"
+  }
+}
+
+run "photo_autofill_off" {
+  command = plan
+
+  variables {
+    api_image                  = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/freshshare-dev/api:abc123"
+    web_image                  = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/freshshare-dev/web:abc123"
+    photo_autofill_secret_name = ""
+  }
+
+  assert {
+    condition     = length([for x in jsondecode(module.api.container_definitions)[0].secrets : x if x.name == "AI_API_KEY"]) == 0
+    error_message = "no AI_API_KEY secret when photo autofill is off"
   }
 }
 

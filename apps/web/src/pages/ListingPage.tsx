@@ -32,7 +32,7 @@ export function ListingPage() {
           <ListingCard listing={q.data} />
           <ListingActions listing={q.data} />
           <div className="border-t border-stone-200 p-4 text-center">
-            <Link to={`/map?listing=${q.data.id}`} className="text-sm font-semibold text-brand-dark underline">Show on the map</Link>
+            <Link to={`/map?listing=${q.data.id}&view=map`} className="text-sm font-semibold text-brand-dark underline">Show on the map</Link>
           </div>
         </div>
       )}

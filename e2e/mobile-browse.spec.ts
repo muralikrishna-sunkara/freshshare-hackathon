@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 // The same web app in a phone browser: map/list toggle and the listing bottom sheet.
 test("browse listings on a phone-sized browser", async ({ page }) => {
-  await page.goto("/map");
+  await page.goto("/map?view=map&km=2");
   await expect(page.getByText(/listings? within 2 km/)).toBeVisible();
   await page.getByRole("tab", { name: "list" }).click();
   await page.getByRole("heading", { name: "Bag of apples from our tree" }).click();

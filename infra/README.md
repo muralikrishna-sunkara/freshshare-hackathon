@@ -150,6 +150,18 @@ Locally, `docker compose` starts Mailpit; open http://localhost:8025 to read eve
 
 Terraform generates the VAPID signing key (`tls_private_key.vapid`, P-256) and stores it in the app secret as `VAPID_PRIVATE_KEY_PEM`; the api derives the public key from it and serves it at `/api/push/key`. Nothing to set up by hand. Push needs HTTPS (it works on `https://freshshare.de`, not on the plain-HTTP ALB name). On iPhone, push only works after "Add to Home Screen". Don't recreate the key: every browser would have to turn push on again. Locally, run `npm run vapid -w apps/api` and paste the line into `.env`.
 
+## Photo autofill (Anthropic API key)
+
+"Fill from photo" on the share form sends the first photo (shrunk, EXIF stripped) to Claude and fills in the title, category, label, dietary tags and allergens for the giver to check. The key is kept out of Terraform state and CI: create the secret once by hand, and Terraform only looks up its ARN and passes it to the api as `AI_API_KEY`.
+
+```bash
+aws secretsmanager create-secret --region eu-central-1 --name freshshare-dev/ai \
+  --secret-string '{"AI_API_KEY":"sk-ant-..."}'
+# rotate later with: aws secretsmanager put-secret-value --secret-id freshshare-dev/ai --secret-string '{"AI_API_KEY":"..."}'
+```
+
+Then run the Terraform apply (registers a task definition with the secret) and an app deploy (or force a new deployment after rotating). The secret must exist before `terraform plan`; set `photo_autofill_secret_name = ""` to turn the feature off. Without a key the api reports `photoAutofill: false` and the button stays hidden. Calls are limited to 30 photos per user per hour. Locally, put `AI_API_KEY=` in `.env`.
+
 ## Tomorrow: switching to the real app
 
 `app-deploy.yml` does nothing until `apps/api/Dockerfile` or

@@ -13,17 +13,16 @@ import { claimView, reserve } from "../services/claims.js";
 import { isBlockedBetween } from "../services/blocks.js";
 import { joinWaitlist, leaveWaitlist, waitlistStatus } from "../services/waitlist.js";
 import { findNearby, publicListing } from "../services/listings.js";
-import { DIETARY_TAGS, isRawMeatOrFish, RAW_MEAT_MESSAGE } from "../services/rules.js";
+import { CATEGORIES, DIETARY_TAGS, isRawMeatOrFish, ORIGINS, RAW_MEAT_MESSAGE } from "../services/rules.js";
 
 export const listings = Router();
 
-const CATEGORIES = ["leftovers", "fruit_veg", "bread", "packaged", "dairy", "other"] as const;
-const ORIGINS = ["homemade", "packaged", "fresh_produce"] as const;
 
 const nearbyQuery = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
-  radius: z.coerce.number().int().min(100).max(20000).default(2000),
+  // Up to 50 km so "Any distance" can show food further away (nearest first).
+  radius: z.coerce.number().int().min(100).max(50000).default(2000),
   category: z.enum(CATEGORIES).optional(),
   diet: z.enum(DIETARY_TAGS).optional(),
 });
@@ -148,6 +147,86 @@ listings.post(
       await prisma.listing.delete({ where: { id: created.id } }).catch(() => {});
       throw e;
     }
+  }),
+);
+
+/** Fields a giver can change after posting. Each is optional; only what is sent changes. */
+const editBody = z.object({
+  title: z.string().trim().min(3, "Give it a short title").max(80).optional(),
+  description: z.string().trim().max(500).optional().transform((v) => (v === undefined ? undefined : v || null)),
+  category: z.enum(CATEGORIES).optional(),
+  origin: z.enum(ORIGINS, { errorMap: () => ({ message: "Choose Homemade, Packaged or Fresh produce" }) }).optional(),
+  bestBefore: z.coerce.date().optional(),
+  pickupFrom: z.coerce.date().optional(),
+  pickupUntil: z.coerce.date().optional(),
+  portions: z.coerce.number().int().min(1).max(50).optional(),
+  allergens: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : [...new Set(v.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean))].slice(0, 14))),
+  dietaryTags: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : [...new Set(v.split(",").map((a) => a.trim()).filter(Boolean))]))
+    .pipe(z.array(z.enum(DIETARY_TAGS, { errorMap: () => ({ message: "Unknown dietary tag" }) })).optional()),
+  weightKg: z
+    .union([z.literal(""), z.coerce.number().min(0.05).max(50)])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "" ? null : v)),
+  handoverSpot: z.string().trim().max(120).optional().transform((v) => (v === undefined ? undefined : v || null)),
+});
+
+/** Edit my listing while it's still available. New photos (if any) replace the old ones; the place stays the same. */
+listings.patch(
+  "/:id",
+  requireAuth,
+  postLimiter,
+  photoFields,
+  ah(async (req, res) => {
+    const id = z.string().min(1).parse(req.params.id);
+    const existing = await prisma.listing.findUnique({ where: { id } });
+    if (!existing || existing.status === "removed") throw new HttpError(404, "not_found", "Listing not found");
+    if (existing.giverId !== userId(req)) throw new HttpError(403, "forbidden", "Only the giver can edit this listing");
+    if (existing.status !== "available") {
+      throw new HttpError(
+        409,
+        "not_editable",
+        existing.status === "reserved"
+          ? "Someone has reserved this food. Decline or finish that pickup before changing the listing."
+          : `This listing is ${existing.status} and can't be changed. Use Post again instead.`,
+      );
+    }
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+    const uploads = [...(files?.photo ?? []), ...(files?.photos ?? [])];
+    if (uploads.length > MAX_PHOTOS) throw new HttpError(400, "too_many_photos", "You can add up to 4 photos");
+    const b = editBody.parse(req.body);
+    const bestBefore = b.bestBefore ?? existing.bestBefore;
+    const pickupFrom = b.pickupFrom ?? existing.pickupFrom;
+    const pickupUntil = b.pickupUntil ?? existing.pickupUntil;
+    if (b.bestBefore && b.bestBefore.getTime() <= Date.now()) throw new HttpError(400, "past_best_before", "The best-before date must be in the future");
+    if (pickupUntil <= pickupFrom) throw new HttpError(400, "bad_pickup_window", "Pickup must end after it starts");
+    if (isRawMeatOrFish(b.title ?? existing.title, b.description === undefined ? existing.description : b.description)) {
+      throw new HttpError(400, "raw_meat_fish", RAW_MEAT_MESSAGE);
+    }
+    let photos: string[] | undefined;
+    if (uploads.length) {
+      const encoded = await Promise.all(uploads.map((f) => toWebp(f.buffer)));
+      const stamp = Date.now().toString(36);
+      photos = await Promise.all(encoded.map((buf, i) => storage().put(`listings/${id}-e${stamp}-${i}.webp`, buf, "image/webp")));
+    }
+    const { bestBefore: _b, pickupFrom: _f, pickupUntil: _u, ...rest } = b;
+    const updated = await prisma.listing.update({
+      where: { id },
+      data: {
+        ...Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined)),
+        bestBefore,
+        pickupFrom,
+        pickupUntil,
+        ...(photos ? { photos, photoUrl: photos[0] } : {}),
+      },
+      include: { giver: true, fridge: true },
+    });
+    res.json({ listing: { ...publicListing(updated), isMine: true, lat: updated.lat, lng: updated.lng, handoverSpot: updated.handoverSpot } });
   }),
 );
 
