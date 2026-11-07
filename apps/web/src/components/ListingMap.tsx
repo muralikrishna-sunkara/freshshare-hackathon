@@ -55,6 +55,7 @@ export function ListingMap(props: {
   listings: Listing[];
   fridges: Fridge[];
   onSelect: (l: Listing) => void;
+  onSelectFridge: (f: Fridge) => void;
   focus?: { lat: number; lng: number };
 }) {
   const icons = useMemo(
@@ -72,7 +73,13 @@ export function ListingMap(props: {
       <FocusOn focus={props.focus} />
       <Circle center={[centre.lat, centre.lng]} radius={radius} pathOptions={{ color: "#6b9f5e", weight: 2, fillOpacity: 0.06, dashArray: "6 6" }} />
       {props.fridges.map((f) => (
-        <Marker key={f.id} position={[f.lat, f.lng]} icon={fridgeIcon} title={f.name} />
+        <Marker
+          key={f.id}
+          position={[f.lat, f.lng]}
+          icon={fridgeIcon}
+          title={f.name}
+          eventHandlers={{ click: () => props.onSelectFridge(f) }}
+        />
       ))}
       {props.listings.map((l) => (
         <Marker

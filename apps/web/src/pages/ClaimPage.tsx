@@ -3,6 +3,7 @@ import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import { useParams } from "react-router-dom";
 import { claimAction, fetchClaim, type Claim, type ClaimStatus } from "../api/client";
+import { Chat } from "../components/Chat";
 import { GiverRow } from "../components/GiverRow";
 import { ListingCard } from "../components/ListingCard";
 import { RateForm } from "../components/RateForm";
@@ -42,6 +43,7 @@ export function ClaimPage() {
       qc.invalidateQueries({ queryKey: ["claims"] });
       qc.invalidateQueries({ queryKey: ["listings"] });
       qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: ["impact"] });
     },
   });
 
@@ -66,6 +68,8 @@ export function ClaimPage() {
           <h2 className="mb-2 text-sm font-bold text-stone-700">{c.role === "receiver" ? "Giver" : "Receiver"}</h2>
           <GiverRow giver={c.role === "receiver" ? l.giver : c.receiver} />
         </section>
+
+        <Chat claim={c} />
 
         <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
           <h2 className="mb-2 text-sm font-bold text-stone-700">Pickup location</h2>

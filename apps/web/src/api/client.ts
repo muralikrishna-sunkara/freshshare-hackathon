@@ -138,3 +138,26 @@ export const rateClaim = (id: string, stars: number, note?: string) =>
 // DEMO verification endpoints (code 123456)
 export const verifyPhone = (phone: string, code: string) => api<{ user: Me }>("/me/verify-phone", json({ phone, code })).then((r) => r.user);
 export const verifyEmail = () => api<{ user: Me }>("/me/verify-email", { method: "POST" }).then((r) => r.user);
+
+export interface Message {
+  id: string;
+  claimId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+}
+
+export const fetchMessages = (claimId: string, after?: string) =>
+  api<{ messages: Message[] }>(`/claims/${claimId}/messages${after ? `?after=${encodeURIComponent(after)}` : ""}`).then((r) => r.messages);
+export const sendMessage = (claimId: string, body: string) =>
+  api<{ message: Message }>(`/claims/${claimId}/messages`, json({ body })).then((r) => r.message);
+
+export type FridgeState = "stocked" | "empty" | "needs_cleaning";
+export const checkInFridge = (id: string, state: FridgeState) => api(`/fridges/${id}/checkins`, json({ state }));
+
+export interface Impact {
+  week: { portions: number; kg: number };
+  me: { portionsGiven: number; portionsReceived: number; kg: number } | null;
+}
+export const fetchImpact = (lat: number, lng: number, radius: number) =>
+  api<Impact>(`/impact?${new URLSearchParams({ lat: String(lat), lng: String(lng), radius: String(radius) })}`);

@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { fetchFridges, fetchListing, fetchNearby, type Category, type Listing } from "../api/client";
+import { fetchFridges, fetchImpact, fetchListing, fetchNearby, type Category, type Fridge, type Listing } from "../api/client";
 import { BottomSheet } from "../components/BottomSheet";
+import { FridgeSheet } from "../components/FridgeSheet";
 import { ListingActions } from "../components/ListingActions";
 import { ListingCard } from "../components/ListingCard";
 import { ListingMap } from "../components/ListingMap";
@@ -11,7 +12,7 @@ import { useMe } from "../hooks/useMe";
 import { CATEGORY, formatDistance } from "../lib/format";
 
 const RADII = [500, 1000, 2000] as const;
-const chipBase = "shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition min-h-[40px]";
+const chipBase = "shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition min-h-[44px]";
 const chipOn = "bg-brand-dark text-white";
 const chipOff = "bg-white text-stone-700 ring-1 ring-stone-300";
 
@@ -21,6 +22,8 @@ export function MapHome() {
   const [category, setCategory] = useState<Category | undefined>();
   const [view, setView] = useState<"map" | "list">("map");
   const [selected, setSelected] = useState<Listing | null>(null);
+  const [selectedFridge, setSelectedFridge] = useState<Fridge | null>(null);
+  const [showFridges, setShowFridges] = useState(true);
   const [params, setParams] = useSearchParams();
   const focusId = params.get("listing");
   const nav = useNavigate();
@@ -41,11 +44,16 @@ export function MapHome() {
     queryFn: () => fetchNearby(loc.lat, loc.lng, radius, category),
   });
   const fridgesQ = useQuery({
-    queryKey: ["fridges", loc.lat, loc.lng],
-    queryFn: () => fetchFridges(loc.lat, loc.lng, 2000),
+    queryKey: ["fridges", loc.lat, loc.lng, radius],
+    queryFn: () => fetchFridges(loc.lat, loc.lng, Math.max(radius, 2000)),
   });
   const listings = listingsQ.data ?? [];
   const fridges = fridgesQ.data ?? [];
+  const impactQ = useQuery({
+    queryKey: ["impact", loc.lat, loc.lng, me.data?.id],
+    queryFn: () => fetchImpact(loc.lat, loc.lng, 2000),
+    refetchInterval: 30_000,
+  });
   const radiusLabel = formatDistance(radius);
 
   return (
@@ -90,9 +98,14 @@ export function MapHome() {
           )}
           </div>
         </div>
-        {/* TODO(Block 10): real impact numbers from GET /api/impact */}
-        <p className="rounded-xl bg-brand-light px-3 py-2 text-sm text-brand-dark">
-          🌱 This week your neighbourhood saved <strong>18 portions</strong> (~7 kg, estimate)
+        <p className="min-h-[40px] rounded-xl bg-brand-light px-3 py-2 text-sm text-brand-dark" aria-live="polite">
+          {impactQ.data ? (
+            <>
+              🌱 This week your neighbourhood saved <strong>{impactQ.data.week.portions} portions</strong> (~{impactQ.data.week.kg} kg, estimate)
+            </>
+          ) : (
+            "🌱 Counting this week's saved food…"
+          )}
         </p>
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
           {RADII.map((r) => (
@@ -100,6 +113,13 @@ export function MapHome() {
               {formatDistance(r)}
             </button>
           ))}
+          <button
+            onClick={() => setShowFridges((v) => !v)}
+            className={`${chipBase} ${showFridges ? chipOn : chipOff}`}
+            aria-pressed={showFridges}
+          >
+            🧊 Fridges
+          </button>
           <span className="mx-1 w-px shrink-0 bg-stone-200" />
           <button onClick={() => setCategory(undefined)} className={`${chipBase} ${!category ? chipOn : chipOff}`} aria-pressed={!category}>
             All
@@ -134,8 +154,9 @@ export function MapHome() {
               centre={loc}
               radius={radius}
               listings={listings}
-              fridges={fridges}
+              fridges={showFridges ? fridges : []}
               onSelect={setSelected}
+              onSelectFridge={setSelectedFridge}
               focus={focusQ.data ? { lat: focusQ.data.publicLat, lng: focusQ.data.publicLng } : undefined}
             />
             <div className="pointer-events-none absolute inset-x-0 top-3 z-[1000] flex justify-center">
@@ -178,6 +199,9 @@ export function MapHome() {
             <ListingActions listing={selected} />
           </>
         )}
+      </BottomSheet>
+      <BottomSheet open={!!selectedFridge} onClose={() => setSelectedFridge(null)}>
+        {selectedFridge && <FridgeSheet fridge={fridges.find((f) => f.id === selectedFridge.id) ?? selectedFridge} />}
       </BottomSheet>
     </div>
   );

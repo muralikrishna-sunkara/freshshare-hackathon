@@ -11,6 +11,7 @@ import { auth, me } from "./routes/auth.js";
 import { claims } from "./routes/claims.js";
 import { fridges } from "./routes/fridges.js";
 import { health } from "./routes/health.js";
+import { impact } from "./routes/impact.js";
 import { listings } from "./routes/listings.js";
 
 export function createApp() {
@@ -34,6 +35,7 @@ export function createApp() {
   api.use("/listings", listings);
   api.use("/fridges", fridges);
   api.use("/claims", claims);
+  api.use("/impact", impact);
   api.use(notFound);
   app.use("/api", api);
 
