@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Footer } from "../components/Footer";
 import { fetchFridges, fetchImpact, fetchListing, fetchNearby, type Category, type DietaryTag, type Fridge, type Listing } from "../api/client";
 import { AppHeader } from "../components/AppHeader";
 import { BottomSheet } from "../components/BottomSheet";
@@ -8,11 +9,12 @@ import { FridgeSheet } from "../components/FridgeSheet";
 import { ListingActions } from "../components/ListingActions";
 import { ListingCard } from "../components/ListingCard";
 import { ListingMap } from "../components/ListingMap";
-import { ListingRow } from "../components/ListingRow";
+import { ListingTile } from "../components/ListingTile";
 import { SidePanel } from "../components/SidePanel";
 import { useLocation } from "../hooks/useLocation";
 import { useIsDesktop } from "../hooks/useMediaQuery";
 import { useMe } from "../hooks/useMe";
+import { useSavedSearches } from "../hooks/useSavedSearches";
 import { CATEGORY, DIETARY, FILL, formatDistance } from "../lib/format";
 
 const RADII = [1000, 2000, 5000, 10000] as const;
@@ -93,7 +95,25 @@ export function MapHome() {
     refetchInterval: 30_000,
   });
   const listings = listingsQ.data ?? [];
-  const sorted = [...listings].sort(SORTS[sort].compare);
+  const q = params.get("q") ?? "";
+  const needle = q.trim().toLowerCase();
+  const sorted = [...listings]
+    .filter((l) => !needle || [l.title, l.description, CATEGORY[l.category].label, l.areaLabel, l.giver.name, l.fridge?.name].some((t) => t?.toLowerCase().includes(needle)))
+    .sort(SORTS[sort].compare);
+  const saved = useSavedSearches();
+  const searchName = [
+    q && `“${q}”`,
+    category && CATEGORY[category].label,
+    diet && DIETARY[diet],
+    formatDistance(radius),
+    sort !== "nearest" && SORTS[sort].label.toLowerCase(),
+  ].filter(Boolean).join(" · ");
+  const searchQuery = (() => {
+    const n = new URLSearchParams(params);
+    n.delete("listing");
+    n.set("view", "list");
+    return n.toString();
+  })();
   const fridges = fridgesQ.data ?? [];
   const radiusLabel = formatDistance(radius);
   const countLabel = listingsQ.isLoading
@@ -112,8 +132,8 @@ export function MapHome() {
     </p>
   );
 
-  const filters = (
-    <div className={isDesktop ? "flex flex-wrap gap-2" : "-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5"}>
+  const renderFilters = (wrap: boolean) => (
+    <div className={wrap ? "flex flex-wrap gap-2" : "-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5"}>
       {RADII.map((r) => (
         <button key={r} onClick={() => setRadius(r)} className={`${chipBase} ${radius === r ? chipOn : chipOff}`} aria-pressed={radius === r}>
           {formatDistance(r)}
@@ -122,8 +142,8 @@ export function MapHome() {
       <button onClick={() => setShowFridges((v) => !v)} className={`${chipBase} ${showFridges ? chipOn : chipOff}`} aria-pressed={showFridges}>
         🧊 Fridges
       </button>
-      {!isDesktop && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
-      {isDesktop && <span className="basis-full" />}
+      {!wrap && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
+      {wrap && <span className="basis-full" />}
       <button onClick={() => setCategory(undefined)} className={`${chipBase} ${!category ? chipOn : chipOff}`} aria-pressed={!category}>
         All
       </button>
@@ -137,7 +157,7 @@ export function MapHome() {
           {CATEGORY[c].emoji} {CATEGORY[c].label}
         </button>
       ))}
-      {!isDesktop && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
+      {!wrap && <span className="mx-1 w-px shrink-0 bg-stone-200" />}
       <select
         aria-label="Dietary"
         value={diet ?? ""}
@@ -151,6 +171,7 @@ export function MapHome() {
       </select>
     </div>
   );
+  const filters = renderFilters(isDesktop);
 
   const viewToggle = (
     <div className="flex shrink-0 rounded-full bg-stone-100 p-1 text-sm font-semibold" role="tablist" aria-label="View">
@@ -179,18 +200,26 @@ export function MapHome() {
     </label>
   );
 
-  const detailedList = (
-    <div className="space-y-4">
-      {listingsQ.isLoading && Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 animate-pulse rounded-2xl bg-stone-200" />)}
-      {sorted.map((l) => (
-        <div key={l.id} className={selected?.id === l.id ? "rounded-2xl ring-2 ring-brand" : ""}>
-          <ListingRow listing={l} onOpen={() => openListing(l)} />
+  const browseGrid = (
+    <div className="space-y-6">
+      {(listingsQ.isLoading || sorted.length > 0) && (
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {listingsQ.isLoading && Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-96 animate-pulse rounded-2xl bg-stone-200" />)}
+          {sorted.map((l) => (
+            <ListingTile key={l.id} listing={l} selected={selected?.id === l.id} onOpen={() => openListing(l)} />
+          ))}
         </div>
-      ))}
+      )}
+      {!listingsQ.isLoading && listings.length > 0 && sorted.length === 0 && (
+        <div className="rounded-2xl bg-white p-6 text-center ring-1 ring-stone-200">
+          <p className="font-semibold">No listings match “{q}”.</p>
+          <button className="mt-2 text-sm font-semibold text-brand-dark underline" onClick={() => setFilter("q", undefined)}>Clear search</button>
+        </div>
+      )}
       {showFridges && fridges.length > 0 && !listingsQ.isLoading && (
-        <section aria-label="Community fridges nearby" className="pt-2">
-          <h2 className="mb-2 font-bold">Community fridges nearby ({fridges.length})</h2>
-          <ul className="grid gap-3 sm:grid-cols-2">
+        <section aria-label="Community fridges nearby">
+          <h2 className="mb-3 font-bold">Community fridges nearby ({fridges.length})</h2>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {fridges.map((f) => (
               <li key={f.id}>
                 <button type="button" onClick={() => openFridge(f)} className="flex w-full gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 ring-stone-200 hover:ring-brand">
@@ -279,6 +308,104 @@ export function MapHome() {
   );
   const fridgeDetail = selectedFridge && <FridgeSheet fridge={fridges.find((f) => f.id === selectedFridge.id) ?? selectedFridge} />;
 
+  const card = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200";
+  const browsePage = (
+    <main className="relative min-h-0 flex-1">
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto max-w-6xl px-4 py-6 lg:px-6 lg:py-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Browse food</h1>
+              <p className="text-stone-600">Free food shared by your neighbours within {radiusLabel}{loc.source === "demo" ? " of the Erlangen demo area" : ""}.</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setView("map")} className="min-h-[44px] rounded-xl bg-white px-4 font-semibold text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50">📍 Map view</button>
+              <Link to="/share" className="flex min-h-[44px] items-center rounded-xl bg-brand-dark px-4 font-bold text-white hover:brightness-110">Share food</Link>
+            </div>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="space-y-4">
+              <section className={card} aria-labelledby="filters-h">
+                <h2 id="filters-h" className="mb-3 font-bold">Filters</h2>
+                {renderFilters(true)}
+              </section>
+              <section className={`${card} ${saved.items.length === 0 ? "hidden lg:block" : ""}`} aria-labelledby="saved-h">
+                <h2 id="saved-h" className="mb-2 font-bold">🔖 Saved searches <span className="text-sm font-normal text-stone-500">({saved.items.length})</span></h2>
+                {saved.items.length === 0 ? (
+                  <p className="py-3 text-center text-sm text-stone-500">No saved searches yet. Use Save to keep these filters.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {saved.items.map((s) => (
+                      <li key={s.id} className="flex items-center gap-1">
+                        <button className="min-h-[36px] flex-1 truncate rounded-lg px-2 text-left text-sm font-semibold text-brand-dark hover:bg-stone-50" onClick={() => setParams(new URLSearchParams(s.query), { replace: true })}>
+                          {s.name}
+                        </button>
+                        <button aria-label={`Delete saved search ${s.name}`} className="h-8 w-8 rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-700" onClick={() => saved.remove(s.id)}>✕</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              <div className="hidden lg:block">{impactBanner}</div>
+            </aside>
+            <div className="min-w-0 space-y-4">
+              <div className={`${card} flex flex-wrap items-center gap-3`}>
+                <label className="flex min-w-[12rem] flex-1 items-center gap-2 rounded-xl bg-stone-50 px-3 ring-1 ring-stone-200 focus-within:ring-brand">
+                  <span aria-hidden>🔍</span>
+                  <input
+                    type="search"
+                    value={q}
+                    onChange={(e) => setFilter("q", e.target.value || undefined)}
+                    placeholder="Search food, area or neighbour"
+                    aria-label="Search listings"
+                    className="min-h-[44px] w-full bg-transparent text-sm outline-none"
+                  />
+                </label>
+                {sortSelect}
+                <button
+                  onClick={() => saved.save(searchName, searchQuery)}
+                  disabled={saved.items.some((s) => s.query === searchQuery)}
+                  className="min-h-[40px] rounded-full px-3 text-sm font-semibold text-brand-dark ring-1 ring-brand/40 hover:bg-brand-light disabled:opacity-50"
+                >
+                  {saved.items.some((s) => s.query === searchQuery) ? "✓ Saved" : "🔖 Save"}
+                </button>
+              </div>
+              <p className="text-sm text-stone-600">{listingsQ.isLoading ? "Finding food nearby…" : `${sorted.length} ${sorted.length === 1 ? "listing" : "listings"} found within ${radiusLabel}`}</p>
+              {errorNote}
+              {emptyState}
+              {browseGrid}
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+      {isDesktop && (
+        <div className="pointer-events-none fixed inset-y-0 right-0 top-16 z-[1050] w-[460px]">
+          <div className="pointer-events-auto">
+            <Panel open={!!selected} onClose={closeListing} label="Listing details">{listingDetail}</Panel>
+            <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label="Community fridge">{fridgeDetail}</Panel>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+
+
+  if (view === "list") {
+    return (
+      <div className="flex h-full w-full flex-col bg-stone-50">
+        <AppHeader />
+        {browsePage}
+        {!isDesktop && (
+          <>
+            <BottomSheet open={!!selected} onClose={closeListing}>{listingDetail}</BottomSheet>
+            <BottomSheet open={!!selectedFridge} onClose={() => setSelectedFridge(null)}>{fridgeDetail}</BottomSheet>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full w-full flex-col bg-stone-50">
       <AppHeader />
@@ -294,33 +421,15 @@ export function MapHome() {
               {filters}
               {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
             </div>
-            {view === "map" ? (
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
-                <p className="mb-3 text-sm font-semibold text-stone-600">{countLabel}</p>
-                {errorNote}
-                {emptyState}
-                {list}
-              </div>
-            ) : (
-              <p className="p-5 text-sm text-stone-500">List view shows every detail. Click a listing to reserve it, or switch back to the map.</p>
-            )}
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <p className="mb-3 text-sm font-semibold text-stone-600">{countLabel}</p>
+              {errorNote}
+              {emptyState}
+              {list}
+            </div>
           </aside>
           <main className="relative min-w-0 flex-1">
-            {view === "map" ? (
-              map
-            ) : (
-              <div className="h-full overflow-y-auto">
-                <div className="mx-auto max-w-4xl space-y-4 p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="font-semibold text-stone-700">{countLabel}</p>
-                    {sortSelect}
-                  </div>
-                  {errorNote}
-                  {emptyState}
-                  {detailedList}
-                </div>
-              </div>
-            )}
+            {map}
             <Panel open={!!selected} onClose={closeListing} label="Listing details">{listingDetail}</Panel>
             <Panel open={!!selectedFridge} onClose={() => setSelectedFridge(null)} label="Community fridge">{fridgeDetail}</Panel>
           </main>
@@ -337,22 +446,11 @@ export function MapHome() {
             {loc.source === "demo" && <p className="text-xs text-stone-500">Showing the Erlangen demo area.</p>}
           </div>
           <main className="relative min-h-0 flex-1">
-            {view === "map" ? (
-              <>
-                {map}
-                <div className="absolute inset-x-4 top-4 z-[1000] space-y-2">
-                  {errorNote}
-                  {emptyState}
-                </div>
-              </>
-            ) : (
-              <div className="h-full space-y-3 overflow-y-auto p-4">
-                <div className="flex justify-end">{sortSelect}</div>
-                {errorNote}
-                {emptyState}
-                {detailedList}
-              </div>
-            )}
+            {map}
+            <div className="absolute inset-x-4 top-4 z-[1000] space-y-2">
+              {errorNote}
+              {emptyState}
+            </div>
           </main>
           <BottomSheet open={!!selected} onClose={closeListing}>{listingDetail}</BottomSheet>
           <BottomSheet open={!!selectedFridge} onClose={() => setSelectedFridge(null)}>{fridgeDetail}</BottomSheet>
